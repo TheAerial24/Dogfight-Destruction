@@ -1560,13 +1560,40 @@ window.addEventListener('load', function(){
 })();
 </script>
 <!-- ============================
-     FIXED ADD-ON: Boss Kills Give +200 Scrap (Now Banked)
+     ADD-ON: Live Scrap Display + Boss Reward Banking
      ============================ -->
 <script>
 (function(){
   const BOSS_REWARD = 200;
 
-  // Floating text feedback
+  /* -----------------------------
+     1. Create the scrap counter UI
+     ----------------------------- */
+  const scrapUI = document.createElement('div');
+  scrapUI.id = "scrapCounterUI";
+  scrapUI.style.position = 'absolute';
+  scrapUI.style.top = '16px';
+  scrapUI.style.left = '120px'; /* just to the right of hearts */
+  scrapUI.style.fontFamily = "'Inter', sans-serif";
+  scrapUI.style.fontWeight = '800';
+  scrapUI.style.fontSize = '1.2rem';
+  scrapUI.style.color = '#fbbf24';
+  scrapUI.style.textShadow = '0 0 6px rgba(0,0,0,0.6)';
+  scrapUI.style.zIndex = '1002';
+  scrapUI.style.pointerEvents = 'none';
+  scrapUI.textContent = "Scrap: 0";
+  document.body.appendChild(scrapUI);
+
+  function updateScrapUI(){
+    const total = Number(localStorage.getItem('jet_dogfight_scrap') || 0);
+    scrapUI.textContent = `Scrap: ${total}`;
+  }
+
+  updateScrapUI();
+
+  /* -----------------------------
+     2. Popup feedback function
+     ----------------------------- */
   function showScrapPopup(text){
     const popup = document.createElement('div');
     popup.textContent = text;
@@ -1579,7 +1606,7 @@ window.addEventListener('load', function(){
       fontSize: '1.2rem',
       textShadow: '0 0 8px rgba(0,0,0,0.5)',
       transition: 'all 1.2s ease-out',
-      zIndex: '2000',
+      zIndex: '2000'
     });
     document.body.appendChild(popup);
     requestAnimationFrame(()=>{
@@ -1589,13 +1616,19 @@ window.addEventListener('load', function(){
     setTimeout(()=>popup.remove(),1200);
   }
 
-  // Hook into createExplosion to detect boss kills
-  if (typeof window.createExplosion === 'function'){
-    const _orig = window.createExplosion;
-    window.createExplosion = function(x, y, count){
-      // Boss explosions always spawn with 60 particles (from boss system)
-      if (count === 60){
-        // Update both in-memory and saved totals
+  /* -----------------------------
+     3. Hook into boss defeat logic
+     ----------------------------- */
+  if (window && typeof window.update === 'function') {
+    const origUpdate = window.update;
+    window.update = function(dt){
+      const beforeJet = window?.state?.defeatedJet;
+      const beforeTurret = window?.state?.defeatedTurret;
+      origUpdate(dt);
+      const afterJet = window?.state?.defeatedJet;
+      const afterTurret = window?.state?.defeatedTurret;
+
+      if ((afterJet && !beforeJet) || (afterTurret && !beforeTurret)){
         let sessionScrap = window.sessionScrap || 0;
         let totalScrap = Number(localStorage.getItem('jet_dogfight_scrap') || 0);
 
@@ -1606,10 +1639,23 @@ window.addEventListener('load', function(){
         localStorage.setItem('jet_dogfight_scrap', totalScrap);
 
         showScrapPopup(`+${BOSS_REWARD} Scrap (Boss Destroyed!)`);
+        updateScrapUI();
       }
-      return _orig.apply(this, arguments);
     };
   }
+
+  /* -----------------------------
+     4. Keep the display synced on Game Over / Restart
+     ----------------------------- */
+  ['showGameOver','showAntiCheat','resetGame'].forEach(fn=>{
+    if (typeof window[fn] === 'function'){
+      const orig = window[fn];
+      window[fn] = function(){
+        const r = orig.apply(this, arguments);
+        updateScrapUI();
+        return r;
+      };
+    }
+  });
 })();
 </script>
-
