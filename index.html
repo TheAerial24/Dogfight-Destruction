@@ -1560,27 +1560,28 @@ window.addEventListener('load', function(){
 })();
 </script>
 <!-- ============================
-     ADD-ON: +200 Scrap Reward for Boss Kills
+     FIXED ADD-ON: Boss Kills Give +200 Scrap (Now Banked)
      ============================ -->
 <script>
 (function(){
   const BOSS_REWARD = 200;
 
-  // floating text UI
+  // Floating text feedback
   function showScrapPopup(text){
     const popup = document.createElement('div');
     popup.textContent = text;
-    popup.style.position = 'absolute';
-    popup.style.right = '20px';
-    popup.style.bottom = '60px';
-    popup.style.color = '#22c55e';
-    popup.style.fontWeight = '800';
-    popup.style.fontSize = '1.2rem';
-    popup.style.textShadow = '0 0 8px rgba(0,0,0,0.5)';
-    popup.style.transition = 'all 1.2s ease-out';
-    popup.style.zIndex = '2000';
+    Object.assign(popup.style, {
+      position: 'absolute',
+      right: '20px',
+      bottom: '60px',
+      color: '#22c55e',
+      fontWeight: '800',
+      fontSize: '1.2rem',
+      textShadow: '0 0 8px rgba(0,0,0,0.5)',
+      transition: 'all 1.2s ease-out',
+      zIndex: '2000',
+    });
     document.body.appendChild(popup);
-
     requestAnimationFrame(()=>{
       popup.style.transform = 'translateY(-60px)';
       popup.style.opacity = '0';
@@ -1588,30 +1589,25 @@ window.addEventListener('load', function(){
     setTimeout(()=>popup.remove(),1200);
   }
 
-  // hook into boss kill
-  if (window && typeof window.update === 'function'){
-    const origUpdate = window.update;
-    window.update = function(dt){
-      const before = (window.score || 0);
-      origUpdate(dt);
-
-      // detect boss defeat indirectly
-      if (window.bossStateCheck === true) return; // skip if already done
-    };
-  }
-
-  // hook into bossUpdate directly (we can detect kills cleanly)
-  if (window && typeof window.createExplosion === 'function'){
-    const _createExplosion = window.createExplosion;
+  // Hook into createExplosion to detect boss kills
+  if (typeof window.createExplosion === 'function'){
+    const _orig = window.createExplosion;
     window.createExplosion = function(x, y, count){
-      // detect boss death explosion (big boom 60)
-      if (count === 60 && typeof localStorage !== 'undefined'){
+      // Boss explosions always spawn with 60 particles (from boss system)
+      if (count === 60){
+        // Update both in-memory and saved totals
+        let sessionScrap = window.sessionScrap || 0;
         let totalScrap = Number(localStorage.getItem('jet_dogfight_scrap') || 0);
+
+        sessionScrap += BOSS_REWARD;
         totalScrap += BOSS_REWARD;
+
+        window.sessionScrap = sessionScrap;
         localStorage.setItem('jet_dogfight_scrap', totalScrap);
+
         showScrapPopup(`+${BOSS_REWARD} Scrap (Boss Destroyed!)`);
       }
-      return _createExplosion.apply(this, arguments);
+      return _orig.apply(this, arguments);
     };
   }
 })();
