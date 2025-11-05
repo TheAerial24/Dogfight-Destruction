@@ -1559,3 +1559,61 @@ window.addEventListener('load', function(){
   updateShop();
 })();
 </script>
+<!-- ============================
+     ADD-ON: +200 Scrap Reward for Boss Kills
+     ============================ -->
+<script>
+(function(){
+  const BOSS_REWARD = 200;
+
+  // floating text UI
+  function showScrapPopup(text){
+    const popup = document.createElement('div');
+    popup.textContent = text;
+    popup.style.position = 'absolute';
+    popup.style.right = '20px';
+    popup.style.bottom = '60px';
+    popup.style.color = '#22c55e';
+    popup.style.fontWeight = '800';
+    popup.style.fontSize = '1.2rem';
+    popup.style.textShadow = '0 0 8px rgba(0,0,0,0.5)';
+    popup.style.transition = 'all 1.2s ease-out';
+    popup.style.zIndex = '2000';
+    document.body.appendChild(popup);
+
+    requestAnimationFrame(()=>{
+      popup.style.transform = 'translateY(-60px)';
+      popup.style.opacity = '0';
+    });
+    setTimeout(()=>popup.remove(),1200);
+  }
+
+  // hook into boss kill
+  if (window && typeof window.update === 'function'){
+    const origUpdate = window.update;
+    window.update = function(dt){
+      const before = (window.score || 0);
+      origUpdate(dt);
+
+      // detect boss defeat indirectly
+      if (window.bossStateCheck === true) return; // skip if already done
+    };
+  }
+
+  // hook into bossUpdate directly (we can detect kills cleanly)
+  if (window && typeof window.createExplosion === 'function'){
+    const _createExplosion = window.createExplosion;
+    window.createExplosion = function(x, y, count){
+      // detect boss death explosion (big boom 60)
+      if (count === 60 && typeof localStorage !== 'undefined'){
+        let totalScrap = Number(localStorage.getItem('jet_dogfight_scrap') || 0);
+        totalScrap += BOSS_REWARD;
+        localStorage.setItem('jet_dogfight_scrap', totalScrap);
+        showScrapPopup(`+${BOSS_REWARD} Scrap (Boss Destroyed!)`);
+      }
+      return _createExplosion.apply(this, arguments);
+    };
+  }
+})();
+</script>
+
