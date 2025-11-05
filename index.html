@@ -1589,5 +1589,21 @@ window.addEventListener('load', function(){
   }
 })();
 </script>
+<!-- ============================
+     DEV ADDON: Press E to End Game Immediately
+     ============================ -->
+<script>
+(function(){
+  window.addEventListener('keydown', e => {
+    if ((e.key === 'e' || e.key === 'E') && typeof window.showGameOver === 'function') {
+      if (window.gameState === 'playing') {
+        console.log("🧪 [DEV] Forcing Game Over via E key");
+        createExplosion(player.x, player.y, 28);
+        showGameOver();
+      }
+    }
+  });
+})();
+</script>
 
 
