@@ -1531,5 +1531,63 @@ window.addEventListener('load', function(){
   updateJetShopUI();
 })();
 </script>
+<!-- ============================
+     FIX: STARFIGHTER ROTATION & STATS APPLY CORRECTLY
+     ============================ -->
+<script>
+(function(){
+  const STARFIGHTER_ROTATION = Math.PI / 2;
+
+  // Reapply stats + rotation after reset
+  if (typeof window.resetGame === 'function') {
+    const origReset = window.resetGame;
+    window.resetGame = function() {
+      origReset.apply(this, arguments);
+
+      const selected = localStorage.getItem('selected_jet') || 'tigershark';
+      if (window.player) {
+        if (selected === 'starfighter') {
+          player.speed = 160;
+          player.turnSpeed = 2.3;
+          player.rotationOffset = STARFIGHTER_ROTATION;
+        } else {
+          player.speed = 120;
+          player.turnSpeed = 3.5;
+          player.rotationOffset = 0;
+        }
+      }
+    };
+  }
+
+  // Force rotated rendering for Starfighter
+  if (typeof window.drawJet === 'function') {
+    const origDrawJet = window.drawJet;
+    window.drawJet = function(ctx, ent) {
+      if (ent.type === 'player' && window.player && player.rotationOffset) {
+        ctx.save();
+        ctx.translate(ent.x, ent.y);
+        ctx.rotate(ent.angle + player.rotationOffset);
+        const img = imgPlayerJet;
+        const w = ent.width, h = ent.height;
+        if (img && img.complete && img.width) {
+          ctx.drawImage(img, -w/2, -h/2, w, h);
+        } else {
+          ctx.fillStyle = ent.color;
+          ctx.beginPath();
+          ctx.moveTo(h/2, 0);
+          ctx.lineTo(-h/2, w/2);
+          ctx.lineTo(-h/3, 0);
+          ctx.lineTo(-h/2, -w/2);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      } else {
+        origDrawJet(ctx, ent);
+      }
+    };
+  }
+})();
+</script>
 
 
