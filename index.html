@@ -96,7 +96,7 @@ let scrap = 0, lastTime = 0, gameTime = 0;
 /* === Anti-Cheat Vars === */
 let antiCheatTimer = 0;
 let turnCheatTimer = 0;
-let fireCheatTimer = 0; // <-- NEW: Timer for fire-only cheat
+let fireCheatTimer = 0; 
 let antiCheatTriggered = false;
 
 const camera = { x:0, y:0 };
@@ -230,130 +230,7 @@ function resetGame(){
   // reset anti-cheat tracking
   antiCheatTimer = 0;
   turnCheatTimer = 0;
-  fireCheatTimer = 0; // <-- NEW: Reset new timer
-  antiCheatTriggered = false;
-}
-
-function spawnEnemy(){
-  if (enemies.length >= MAX_ENEMIES) return;
-  const spawnAngle = Math.random()*Math.PI*2;
-  const spawnDist = Math.max(canvas.width, canvas.height)*0.8;
-  const x = player.x + Math.cos(spawnAngle)*spawnDist;
-  const y = player.y + Math.sin(spawnAngle)*spawnDist;
-  const angle = Math.atan2(player.y - y, player.x - x);
-  enemies.push(createJet(x,y,angle,ENEMY_SPEED,ENEMY_TURN_SPEED,'#EF4444','enemy'));
-}
-
-function createExplosion(x,y,count){
-  for(let i=0;i<count;i++){
-    const angle = Math.random()*Math.PI*2;
-    const speed = rand(40,220);
-    const life = rand(0.6,1.6);
-    particles.push({ x,y,dx:Math.cos(angle)*speed,dy:Math.sin(angle)*speed,life,maxLife:life,size:rand(2,5) });
-it_internal(ctx, ent, imgPlayerJet, false);
-}
-
-const svgEnemy = `
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <g transform="translate(32,32)">
-    <polygon points="0,-28 8,-8 20,0 8,8 0,28 -8,8 -20,0 -8,-8" fill="#EF4444" stroke="#7f1d1d" stroke-width="1"/>
-    <polygon points="0,-24 5,-8 12,0 5,8 0,24 -5,8 -12,0 -5,-8" fill="#F87171"/>
-    <ellipse cx="0" cy="-8" rx="4" ry="5" fill="#FECACA"/>
-    <polygon points="-6,12 -10,18 -6,12" fill="#7f1d1d" opacity="0.6"/>
-    <polygon points="6,12 10,18 6,12" fill="#7f1d1d" opacity="0.6"/>
-  </g>
-</svg>`;
-
-function svgToImg(svgString, onload) {
-  const img = new Image();
-  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
-  img.onload = () => { if (onload) onload(img); };
-  img.onerror = () => { console.warn('Failed to load inline SVG image.'); if (onload) onload(img); };
-  return img;
-}
-
-const imgPlayerJet = svgToImg(svgPlayer);
-const imgEnemyJet  = svgToImg(svgEnemy);
-
-/* ============================
-    --- NEW: Plane System ---
-    ============================ */
-
-// This is the "database" for all planes
-const PLANES = {
-    'f20': {
-        name: 'F-20 Tigershark',
-        cost: 0,
-        speed: PLAYER_SPEED, // 120
-        turnSpeed: PLAYER_TURN_SPEED, // 3.5
-        shotCooldown: SHOT_COOLDOWN, // 5
-        draw: function(ctx, ent) {
-            // Call the internal draw function normally
-            drawJet_internal(ctx, ent, imgPlayerJet, false);
-        }
-    },
-    'f104': {
-        name: 'F-104 Starfighter',
-        cost: 1500, // Example cost
-        speed: 240, // "Much faster"
-        turnSpeed: PLAYER_TURN_SPEED, // Same turn speed
-        shotCooldown: SHOT_COOLDOWN, // Same fire rate
-        draw: function(ctx, ent) {
-            // Call the internal draw function with the 'rotate' flag set to true
-            drawJet_internal(ctx, ent, imgPlayerJet, true);
-        }
-    }
-    // You can add more planes here
-};
-
-// This tracks the player's unlocks (does NOT include scrap)
-let playerData = {
-    unlockedPlanes: ['f20'], // Player starts with the F-20
-    currentPlaneId: 'f20'   // This is the 'key' for the PLANES object
-};
-
-// This variable will hold the *stats* of the plane we're flying
-let activePlaneStats = PLANES[playerData.currentPlaneId];
-
-
-/* ============================
-    Utility helpers
-    ============================ */
-function resizeCanvas(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-function rand(min,max){ return Math.random()*(max-min)+min; }
-function getDistance(x1,y1,x2,y2){ return Math.hypot(x2 - x1, y2 - y1); }
-function wrapAngle(a){ return (a + Math.PI) % (Math.PI*2) - Math.PI; }
-function createJet(x,y,angle,speed,turnSpeed,color,type){
-  return { x,y,angle,speed,turnSpeed,color,type,width:JET_WIDTH,height:JET_HEIGHT,radius:JET_RADIUS,velX:0,velY:0,spawnTime:gameTime };
-}
-
-/* ============================
-    Game lifecycle
-    ============================ */
-function resetGame(){
-  // --- NEW: Set active plane stats ---
-  // Get stats from the *currently selected* plane
-  activePlaneStats = PLANES[playerData.currentPlaneId];
-
-  // MODIFIED: This now reads stats from the active plane
-  player = createJet(0,0,-Math.PI/2, activePlaneStats.speed, activePlaneStats.turnSpeed,'#3B82F6','player');
-  
-  enemies = []; particles = []; contrails = []; bullets = [];
-  
-  // MODIFIED: Renamed variable
-  scrap = 0;
-  
-  gameTime = 0; spawnTimer = 1.8; spawnInterval = 4.5;
-  gameState = 'playing';
-  gameOverModal.style.display = 'none';
-  messageOverlay.style.display = 'none';
-  // MODIFIED: Renamed variable
-  scrapDisplay.style.display = 'block';
-  
-  // reset anti-cheat tracking
-  antiCheatTimer = 0;
-  turnCheatTimer = 0;
-  fireCheatTimer = 0; // <-- NEW: Reset new timer
+  fireCheatTimer = 0; 
   antiCheatTriggered = false;
 }
 
@@ -852,7 +729,7 @@ messageOverlay.style.display = 'block';
       fill.style.background = BAR_FILL;
     } else {
       const filled = Math.min(1, (COOLDOWN - cooldownTimer) / COOLDOWN);
-i     fill.style.width = (filled * 100) + '%';
+      fill.style.width = (filled * 100) + '%';
       fill.style.background = BAR_FILL;
     }
   };
@@ -907,7 +784,7 @@ i     fill.style.width = (filled * 100) + '%';
       state.active = false;
       state.current = null;
       state.type = null;
-source:       state.bossShots.length = 0;
+      state.bossShots.length = 0;
       // DO NOT reset defeated flags here so score thresholds still work after death
       return origReset.apply(this, arguments);
     };
@@ -928,9 +805,9 @@ source:       state.bossShots.length = 0;
       height: BOSS_JET.height,
       radius: BOSS_JET.radius,
       color: BOSS_JET.color,
-      type: BOSS_JET.type,
+    Two   type: BOSS_JET.type,
       hp: BOSS_JET.maxHp, maxHp: BOSS_JET.maxHp
-s   };
+    };
     state.type = 'jet';
     state.active = true;
   }
@@ -943,7 +820,7 @@ s   };
       x, y, angle: 0,
       type: BOSS_TURRET.type,
       hp: BOSS_TURRET.maxHp, maxHp: BOSS_TURRET.maxHp,
-s     fireTimer: 0
+      fireTimer: 0
     };
     state.type = 'turret';
     state.active = true;
@@ -964,7 +841,7 @@ s     fireTimer: 0
       // Rotate to face player and fire projectiles
       const b = state.current;
       b.angle = Math.atan2(player.y - b.y, player.x - b.x);
-      b.fireTimer -= dt;
+Two     b.fireTimer -= dt;
       if (b.fireTimer <= 0){
         b.fireTimer = BOSS_TURRET.fireCooldown;
         // Fire a projectile towards player
@@ -978,7 +855,7 @@ s     fireTimer: 0
     for (let i=state.bossShots.length-1; i>=0; i--){
       const s = state.bossShots[i];
       s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
-s     if (s.life <= 0){ state.bossShots.splice(i,1); continue; }
+      if (s.life <= 0){ state.bossShots.splice(i,1); continue; }
       // collision vs player
       const d = Math.hypot(s.x - player.x, s.y - player.y);
       if (d < (s.r + player.radius)){
@@ -990,7 +867,7 @@ s     if (s.life <= 0){ state.bossShots.splice(i,1); continue; }
 
     // Player bullets vs boss collision
     for (let i=bullets.length-1; i>=0; i--){
-s     const b = bullets[i];
+      const b = bullets[i];
       const dx = b.x - state.current.x;
       const dy = b.y - state.current.y;
       const dist = Math.hypot(dx, dy);
@@ -1050,7 +927,7 @@ s     const b = bullets[i];
       // Base
       ctx.save();
       ctx.translate(b.x, b.y);
-s     ctx.fillStyle = '#7f1d1d';
+      ctx.fillStyle = '#7f1d1d';
       ctx.beginPath(); ctx.arc(0,0,BOSS_TURRET.radius,0,Math.PI*2); ctx.fill();
       // Barrel
       ctx.rotate(b.angle);
@@ -1077,7 +954,7 @@ s     ctx.fillStyle = '#7f1d1d';
 
     ctx.fillStyle = HP_BAR.bg;
     ctx.fillRect(x, y, HP_BAR.w, HP_BAR.h);
-T   ctx.fillStyle = HP_BAR.fill;
+    ctx.fillStyle = HP_BAR.fill;
     ctx.fillRect(x, y, HP_BAR.w * frac, HP_BAR.h);
     ctx.strokeStyle = HP_BAR.stroke;
     ctx.lineWidth = 2;
@@ -1092,7 +969,7 @@ T   ctx.fillStyle = HP_BAR.fill;
     // Spawn logic (one boss at a time)
     if (!state.active && gameState === 'playing'){
       // MODIFIED: Renamed 'score' to 'scrap'
-tr     if (!state.defeatedJet && scrap >= BOSS1_SCORE){
+      if (!state.defeatedJet && scrap >= BOSS1_SCORE){
         spawnBossJet();
       // MODIFIED: Renamed 'score' to 'scrap'
       } else if (state.defeatedJet && !state.defeatedTurret && scrap >= BOSS2_SCORE){
@@ -1107,7 +984,7 @@ tr     if (!state.defeatedJet && scrap >= BOSS1_SCORE){
   window.draw = function(){
     origDraw();     // original drawing first
     bossDraw();     // then boss overlays (boss & hp bar)
-s   };
+  };
 })();
 </script>
 
@@ -1116,7 +993,7 @@ s   };
   window.addEventListener('keydown', function(e){
     if ((e.key === 'b' || e.key === 'B') && typeof gameState !== 'undefined' && gameState === 'playing'){
       // MODIFIED: Renamed 'score' to 'scrap'
-row     if (typeof scrap !== 'undefined'){
+      if (typeof scrap !== 'undefined'){
         // MODIFIED: Renamed 'score' to 'scrap'
         scrap += 5000;
         // MODIFIED: Renamed 'scoreDisplay' to 'scrapDisplay' and 'score' to 'scrap'
@@ -1144,7 +1021,7 @@ row     if (typeof scrap !== 'undefined'){
   heartsContainer.style.left = '16px';
   heartsContainer.style.zIndex = '1001';
   heartsContainer.style.display = 'flex';
-  heartsContainer.style.gap = '6px';
+s   heartsContainer.style.gap = '6px';
   heartsContainer.style.pointerEvents = 'none';
   document.body.appendChild(heartsContainer);
 
@@ -1154,7 +1031,7 @@ row     if (typeof scrap !== 'undefined'){
     d.style.transition='opacity 0.2s ease, transform 0.2s ease';
     d.innerHTML=`<svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
       <path d="M12 21s-6.7-4.35-9.33-7.36C-0.48 10.35 1.2 5.7 5.07 5.07 7.3 4.7 9.1 6 12 8.6 14.9 6 16.7 4.7 18.93 5.07c3.86.63 5.55 5.28 2.4 8.57C18.7 16.65 12 21 12 21z"
-s           fill="#ef4444" stroke="#7f1d1d" stroke-width="1"/></svg>`;
+            fill="#ef4444" stroke="#7f1d1d" stroke-width="1"/></svg>`;
     return d;
   }
   function renderHearts(){
@@ -1184,7 +1061,7 @@ s           fill="#ef4444" stroke="#7f1d1d" stroke-width="1"/></svg>`;
     const _r = window.resetGame;
     window.resetGame = function(){
       const result = _r.apply(this, arguments); // original reset
-tr     hearts = MAX_HEARTS;
+      hearts = MAX_HEARTS;
       invincibleUntil = 0;
       flashAlpha = 0;
       fx.length = 0;
@@ -1205,7 +1082,7 @@ tr     hearts = MAX_HEARTS;
   if (typeof window.showAntiCheat === 'function'){
     const _sac = window.showAntiCheat;
     window.showAntiCheat = function(){
-source:       heartsContainer.style.display = 'none';
+      heartsContainer.style.display = 'none';
       return _sac.apply(this, arguments);
     };
   }
@@ -1222,18 +1099,18 @@ source:       heartsContainer.style.display = 'none';
     
     // Update FX
     flashAlpha = Math.max(0, flashAlpha - dt*2.5);
-source:     for(let i=fx.length-1; i>=0; i--){
+    for(let i=fx.length-1; i>=0; i--){
       const p=fx[i]; p.x+=p.dx*dt; p.y+=p.dy*dt; p.life-=dt;
       p.dx*=0.98; p.dy*=0.98;
       if(p.life<=0) fx.splice(i,1);
-    }
+  s }
 
     // Check for invincibility
     const isInvincible = performance.now() < invincibleUntil;
     if (isInvincible) return;
 
     // Collision check (player vs enemy)
-s   // This logic is duplicated from main update, but now wrapped in invincibility
+    // This logic is duplicated from main update, but now wrapped in invincibility
     if (typeof enemies !== 'undefined' && typeof player !== 'undefined'){
       for (let i = enemies.length -1; i>=0; i--){
         const e = enemies[i];
@@ -1259,8 +1136,8 @@ s           invincibleUntil = performance.now() + INVINCIBILITY_MS;
             // No scrap for this
           }
           break; // Only one collision per frame
-        }
-F     }
+  E   }
+      }
     }
   };
 
@@ -1273,16 +1150,16 @@ F     }
       if (!code.includes('/* HEARTS_PATCHED */')){
         code = code.replace(
           /(\/\/\s*collisions:\s*player\s*vs\s*enemy[\s\S]*?showGameOver\(\);[\s\S]*?return;[\s\S]*?})/m,
-Failure           '/* HEARTS_PATCHED \n $1 \n */'
+          '/* HEARTS_PATCHED \n $1 \n */'
         );
         // Create a new function from the modified code string
         origUpdate = new Function('dt', code.substring(code.indexOf('{')+1, code.lastIndexOf('}')));
-        window.update = origUpdate;
-  S }
+Why       window.update = origUpdate;
+      }
       // Now call the patched (or original) update
       origUpdate.call(this, dt);
     };
-True })(window.update);
+  })(window.update);
 
   // --- Hook draw loop ---
   const _d = window.draw;
@@ -1291,7 +1168,7 @@ True })(window.update);
     
     // Draw FX (sparks, smoke)
     if (typeof camera !== 'undefined' && typeof ctx !== 'undefined'){
-      ctx.save();
+s     ctx.save();
       ctx.translate(canvas.width/2 - camera.x, canvas.height/2 - camera.y);
       for(const p of fx){
         ctx.fillStyle = p.color;
@@ -1300,10 +1177,10 @@ True })(window.update);
           ctx.globalAlpha = alpha * 0.5;
         } else {
           ctx.globalAlpha = alpha;
-        }
+s     }
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI*2);
-Failure         ctx.fill();
+        ctx.fill();
       }
       ctx.globalAlpha = 1.0;
       ctx.restore();
@@ -1312,8 +1189,8 @@ Failure         ctx.fill();
     // Draw flash
     if (flashAlpha > 0){
       ctx.fillStyle = `rgba(255, 0, 0, ${flashAlpha * 0.35})`;
-all       ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+s   }
   };
 })();
 </script>
