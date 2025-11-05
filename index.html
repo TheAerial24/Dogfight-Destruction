@@ -474,6 +474,7 @@ function update(dt){
     for (let j = enemies.length-1; j>=0; j--){
       let e = enemies[j];
       if (getDistance(b.x,b.y,e.x,e.y) < BULLET_RADIUS + e.radius){
+grid-template-rows: auto 1fr auto;
         createExplosion(e.x,e.y,14);
         enemies.splice(j,1);
         bullets.splice(i,1);
@@ -729,7 +730,7 @@ messageOverlay.style.display = 'block';
       fill.style.background = BAR_FILL;
     } else {
       const filled = Math.min(1, (COOLDOWN - cooldownTimer) / COOLDOWN);
-      fill.style.width = (filled * 100) + '%';
+i     fill.style.width = (filled * 100) + '%';
       fill.style.background = BAR_FILL;
     }
   };
@@ -805,7 +806,7 @@ messageOverlay.style.display = 'block';
       height: BOSS_JET.height,
       radius: BOSS_JET.radius,
       color: BOSS_JET.color,
-    Two   type: BOSS_JET.type,
+      type: BOSS_JET.type,
       hp: BOSS_JET.maxHp, maxHp: BOSS_JET.maxHp
     };
     state.type = 'jet';
@@ -841,7 +842,7 @@ messageOverlay.style.display = 'block';
       // Rotate to face player and fire projectiles
       const b = state.current;
       b.angle = Math.atan2(player.y - b.y, player.x - b.x);
-Two     b.fireTimer -= dt;
+      b.fireTimer -= dt;
       if (b.fireTimer <= 0){
         b.fireTimer = BOSS_TURRET.fireCooldown;
         // Fire a projectile towards player
@@ -909,7 +910,7 @@ Two     b.fireTimer -= dt;
       ctx.rotate(b.angle);
       const img = imgEnemyJet;
       const w = b.width, h = b.height;
-      if (img && img.complete && img.width){
+source:       if (img && img.complete && img.width){
         ctx.drawImage(img, -w/2, -h/2, w, h);
       } else {
         ctx.fillStyle = b.color;
@@ -933,7 +934,7 @@ Two     b.fireTimer -= dt;
       ctx.rotate(b.angle);
       ctx.fillStyle = '#ef4444';
       ctx.fillRect(0, -6, BOSS_TURRET.radius+18, 12);
-      ctx.restore();
+row       ctx.restore();
     }
 
     // Boss projectiles
@@ -947,14 +948,14 @@ Two     b.fireTimer -= dt;
 
     // Boss HP bar (screen space, top center)
     const hp = state.current ? state.current.hp : 0;
-    const maxHp = state.current ? state.current.maxHp : 1;
+s   const maxHp = state.current ? state.current.maxHp : 1;
     const frac = Math.max(0, Math.min(1, hp / maxHp));
     const x = (canvas.width - HP_BAR.w)/2;
     const y = HP_BAR.y;
 
     ctx.fillStyle = HP_BAR.bg;
     ctx.fillRect(x, y, HP_BAR.w, HP_BAR.h);
-    ctx.fillStyle = HP_BAR.fill;
+T   ctx.fillStyle = HP_BAR.fill;
     ctx.fillRect(x, y, HP_BAR.w * frac, HP_BAR.h);
     ctx.strokeStyle = HP_BAR.stroke;
     ctx.lineWidth = 2;
@@ -969,7 +970,7 @@ Two     b.fireTimer -= dt;
     // Spawn logic (one boss at a time)
     if (!state.active && gameState === 'playing'){
       // MODIFIED: Renamed 'score' to 'scrap'
-      if (!state.defeatedJet && scrap >= BOSS1_SCORE){
+tr     if (!state.defeatedJet && scrap >= BOSS1_SCORE){
         spawnBossJet();
       // MODIFIED: Renamed 'score' to 'scrap'
       } else if (state.defeatedJet && !state.defeatedTurret && scrap >= BOSS2_SCORE){
@@ -978,13 +979,13 @@ Two     b.fireTimer -= dt;
     }
 
     origUpdate(dt); // keep original behaviors
-    bossUpdate(dt); // then boss behaviors
+Next     bossUpdate(dt); // then boss behaviors
   };
 
   window.draw = function(){
     origDraw();     // original drawing first
     bossDraw();     // then boss overlays (boss & hp bar)
-  };
+s   };
 })();
 </script>
 
@@ -993,7 +994,7 @@ Two     b.fireTimer -= dt;
   window.addEventListener('keydown', function(e){
     if ((e.key === 'b' || e.key === 'B') && typeof gameState !== 'undefined' && gameState === 'playing'){
       // MODIFIED: Renamed 'score' to 'scrap'
-      if (typeof scrap !== 'undefined'){
+row     if (typeof scrap !== 'undefined'){
         // MODIFIED: Renamed 'score' to 'scrap'
         scrap += 5000;
         // MODIFIED: Renamed 'scoreDisplay' to 'scrapDisplay' and 'score' to 'scrap'
@@ -1021,7 +1022,7 @@ Two     b.fireTimer -= dt;
   heartsContainer.style.left = '16px';
   heartsContainer.style.zIndex = '1001';
   heartsContainer.style.display = 'flex';
-s   heartsContainer.style.gap = '6px';
+  heartsContainer.style.gap = '6px';
   heartsContainer.style.pointerEvents = 'none';
   document.body.appendChild(heartsContainer);
 
@@ -1045,7 +1046,7 @@ s   heartsContainer.style.gap = '6px';
   // FX helpers
   function addSparks(x,y,color='#ffd54f',n=18){
     for(let i=0;i<n;i++){
-      const a=Math.random()*Math.PI*2, s=140+Math.random()*160, l=0.22+Math.random()*0.35;
+  T   const a=Math.random()*Math.PI*2, s=140+Math.random()*160, l=0.22+Math.random()*0.35;
       fx.push({x,y,dx:Math.cos(a)*s,dy:Math.sin(a)*s,life:l,maxLife:l,size:2+Math.random()*3,color});
     }
   }
@@ -1074,7 +1075,7 @@ s   heartsContainer.style.gap = '6px';
   if (typeof window.showGameOver === 'function'){
     const _sgo = window.showGameOver;
     window.showGameOver = function(){
-      heartsContainer.style.display = 'none';
+M     heartsContainer.style.display = 'none';
       return _sgo.apply(this, arguments);
     };
   }
@@ -1087,12 +1088,36 @@ s   heartsContainer.style.gap = '6px';
     };
   }
 
+  // This variable will hold the patched update function
+  let patchedUpdate = null;
+
+  // This function patches the original update
+  function patchUpdate(origUpdate) {
+    let code = origUpdate.toString();
+    if (!code.includes('/* HEARTS_PATCHED */')) {
+      code = code.replace(
+        /(\/\/\s*collisions:\s*player\s*vs\s*enemy[\s\S]*?showGameOver\(\);[\s\S]*?return;[\s\S]*?})/m,
+        '/* HEARTS_PATCHED \n $1 \n */' // Comment out the original collision
+      );
+      // Create a new function from the modified code string
+      return new Function('dt', code.substring(code.indexOf('{') + 1, code.lastIndexOf('}')));
+    }
+    return origUpdate; // Already patched
+  }
+
   // --- Intercept player collision ---
-  // Find original update loop (it might be wrapped)
   const _u = window.update;
+  // Patch the original update function *once*
+  patchedUpdate = patchUpdate(_u);
+  
   window.update = function(dt){
-    // Run original logic first
-    _u.apply(this, arguments);
+    // Run the *patched* original logic first
+    if (patchedUpdate) {
+      patchedUpdate.call(this, dt);
+    } else {
+      // Fallback in case something went wrong
+      _u.apply(this, arguments);
+    }
     
     // Now check game state *after* original update
     if (typeof gameState === 'undefined' || gameState !== 'playing') return;
@@ -1103,14 +1128,14 @@ s   heartsContainer.style.gap = '6px';
       const p=fx[i]; p.x+=p.dx*dt; p.y+=p.dy*dt; p.life-=dt;
       p.dx*=0.98; p.dy*=0.98;
       if(p.life<=0) fx.splice(i,1);
-  s }
+    }
 
     // Check for invincibility
     const isInvincible = performance.now() < invincibleUntil;
     if (isInvincible) return;
 
     // Collision check (player vs enemy)
-    // This logic is duplicated from main update, but now wrapped in invincibility
+    // This is the new collision logic that respects hearts
     if (typeof enemies !== 'undefined' && typeof player !== 'undefined'){
       for (let i = enemies.length -1; i>=0; i--){
         const e = enemies[i];
@@ -1120,7 +1145,7 @@ s   heartsContainer.style.gap = '6px';
           hearts--;
           renderHearts();
           addSparks(player.x, player.y);
-s         addSmoke(player.x, player.y);
+          addSmoke(player.x, player.y);
           flashAlpha = 1.0;
           
           if (hearts <= 0){
@@ -1129,37 +1154,17 @@ s         addSmoke(player.x, player.y);
             return;
           } else {
             // Not dead, become invincible
-s           invincibleUntil = performance.now() + INVINCIBILITY_MS;
+            invincibleUntil = performance.now() + INVINCIBILITY_MS;
             // Destroy the enemy that hit us
             createExplosion(e.x, e.y, 14);
             enemies.splice(i, 1);
             // No scrap for this
           }
           break; // Only one collision per frame
-  E   }
+        }
       }
     }
   };
-
-  // --- Override player collision in main script ---
-  // Find original update loop again
-  (function(origUpdate){
-    window.update = function(dt){
-      // Find 'collisions: player vs enemy' loop and comment it out
-      let code = origUpdate.toString();
-      if (!code.includes('/* HEARTS_PATCHED */')){
-        code = code.replace(
-          /(\/\/\s*collisions:\s*player\s*vs\s*enemy[\s\S]*?showGameOver\(\);[\s\S]*?return;[\s\S]*?})/m,
-          '/* HEARTS_PATCHED \n $1 \n */'
-        );
-        // Create a new function from the modified code string
-        origUpdate = new Function('dt', code.substring(code.indexOf('{')+1, code.lastIndexOf('}')));
-Why       window.update = origUpdate;
-      }
-      // Now call the patched (or original) update
-      origUpdate.call(this, dt);
-    };
-  })(window.update);
 
   // --- Hook draw loop ---
   const _d = window.draw;
@@ -1168,19 +1173,19 @@ Why       window.update = origUpdate;
     
     // Draw FX (sparks, smoke)
     if (typeof camera !== 'undefined' && typeof ctx !== 'undefined'){
-s     ctx.save();
+      ctx.save();
       ctx.translate(canvas.width/2 - camera.x, canvas.height/2 - camera.y);
       for(const p of fx){
-        ctx.fillStyle = p.color;
+    D     ctx.fillStyle = p.color;
         const alpha = (p.life / p.maxLife);
         if (p.color.startsWith('rgba')){
           ctx.globalAlpha = alpha * 0.5;
-        } else {
+      S } else {
           ctx.globalAlpha = alpha;
-s     }
+        }
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI*2);
-        ctx.fill();
+Failure         ctx.fill();
       }
       ctx.globalAlpha = 1.0;
       ctx.restore();
@@ -1190,7 +1195,7 @@ s     }
     if (flashAlpha > 0){
       ctx.fillStyle = `rgba(255, 0, 0, ${flashAlpha * 0.35})`;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-s   }
+    }
   };
 })();
 </script>
