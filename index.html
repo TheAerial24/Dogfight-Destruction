@@ -1365,261 +1365,40 @@ window.addEventListener('load', function(){
 })();
 </script>
 <!-- ============================
-     NEW: Jet Unlock & Selection System + Hotkeys
-     ============================ -->
-<script>
-(function(){
-  // --- CONFIG ---
-  const jets = {
-    tigershark: {
-      name: "F-20 Tigershark",
-      desc: "Balanced starter jet.",
-      speed: 120,
-      turn: 3.5,
-      cost: 0,
-      rotationOffset: 0
-    },
-    starfighter: {
-      name: "F-104 Starfighter",
-      desc: "Extremely fast, low maneuverability.",
-      speed: 160,
-      turn: 2.5,
-      cost: 300,
-      rotationOffset: Math.PI / 2
-    }
-  };
-
-  // --- LOAD SAVED DATA ---
-  let totalScrap = Number(localStorage.getItem('jet_dogfight_scrap') || 0);
-  let ownedJets = JSON.parse(localStorage.getItem('owned_jets') || '["tigershark"]');
-  let selectedJet = localStorage.getItem('selected_jet') || 'tigershark';
-
-  // --- SHOP UI CREATION ---
-  const modal = document.getElementById('gameOverModal');
-  const restartButton = document.getElementById('restartButton');
-  
-  const jetShopContainer = document.createElement('div');
-  jetShopContainer.id = "jetShop";
-  jetShopContainer.innerHTML = `
-    <hr style="border:1px solid #374151; margin: 1.5rem 0;">
-    <p style="margin-bottom: 0.5rem; font-size: 1.1rem; color:#cbd5e1;">
-      Banked Scrap: <strong><span id="jetScrapDisplay">0</span></strong>
-    </p>
-    <div id="jetButtons" style="display:flex; flex-direction:column; gap:0.5rem; margin-top:0.5rem; margin-bottom:1.5rem; width: 100%; max-width: 320px; margin-left:auto; margin-right:auto;"></div>
-  `;
-  if (modal && restartButton) modal.insertBefore(jetShopContainer, restartButton);
-
-  const scrapDisplay = document.getElementById('jetScrapDisplay');
-  const buttonContainer = document.getElementById('jetButtons');
-
-  // --- STYLES ---
-  const style = document.createElement('style');
-  style.innerHTML = `
-    .jet-btn {
-      font-family:'Inter',sans-serif;
-      background:#374151;
-      color:#f3f4f6;
-      border:none;
-      padding:0.7rem 1rem;
-      border-radius:8px;
-      font-size:0.95rem;
-      font-weight:700;
-      cursor:pointer;
-      text-align:left;
-      transition:all 0.18s ease;
-    }
-    .jet-btn span { float:right; opacity:0.8; }
-    .jet-btn:hover { background:#4b5563; }
-    .jet-btn.owned { background:#1e3a8a; }
-    .jet-btn.selected { background:#3b82f6; color:#fff; }
-    .jet-btn:disabled { background:#1f2937; opacity:0.6; cursor:not-allowed; }
-  `;
-  document.head.appendChild(style);
-
-  // --- SHOP UPDATE ---
-  function updateShop(){
-    scrapDisplay.textContent = totalScrap;
-    buttonContainer.innerHTML = '';
-
-    for (const key in jets){
-      const j = jets[key];
-      const owned = ownedJets.includes(key);
-      const selected = selectedJet === key;
-
-      const btn = document.createElement('button');
-      btn.className = 'jet-btn';
-      if (owned) btn.classList.add('owned');
-      if (selected) btn.classList.add('selected');
-
-      btn.innerHTML = `
-        ${j.name} <span>${owned ? (selected ? "Selected" : "Owned") : j.cost + " Scrap"}</span><br>
-        <small style="opacity:0.8;">${j.desc}</small>
-      `;
-
-      if (!owned && totalScrap < j.cost) btn.disabled = true;
-
-      btn.addEventListener('click', () => {
-        if (!owned){
-          if (totalScrap >= j.cost){
-            totalScrap -= j.cost;
-            ownedJets.push(key);
-            localStorage.setItem('owned_jets', JSON.stringify(ownedJets));
-            localStorage.setItem('jet_dogfight_scrap', totalScrap);
-          } else return;
-        }
-        selectedJet = key;
-        localStorage.setItem('selected_jet', selectedJet);
-        updateShop();
-      });
-      buttonContainer.appendChild(btn);
-    }
-  }
-
-  // --- APPLY SELECTED JET STATS ---
-  if (typeof window.resetGame === 'function'){
-    const origReset = window.resetGame;
-    window.resetGame = function(){
-      origReset.apply(this, arguments);
-      const jet = jets[selectedJet] || jets.tigershark;
-      if (window.player){
-        player.speed = jet.speed;
-        player.turnSpeed = jet.turn;
-        player.rotationOffset = jet.rotationOffset || 0;
-      }
-    };
-  }
-
-  // --- ROTATE MODEL IN DRAW ---
-  if (typeof window.drawJet === 'function'){
-    const origDrawJet = window.drawJet;
-    window.drawJet = function(ctx, ent){
-      if (ent.type === 'player' && window.player && player.rotationOffset){
-        ctx.save();
-        ctx.translate(ent.x, ent.y);
-        ctx.rotate(ent.angle + player.rotationOffset);
-        const img = imgPlayerJet;
-        const w = ent.width, h = ent.height;
-        if (img && img.complete && img.width){
-          ctx.drawImage(img, -w/2, -h/2, w, h);
-        } else {
-          ctx.fillStyle = ent.color;
-          ctx.beginPath();
-          ctx.moveTo(h/2,0);
-          ctx.lineTo(-h/2, w/2);
-          ctx.lineTo(-h/3,0);
-          ctx.lineTo(-h/2, -w/2);
-          ctx.closePath();
-          ctx.fill();
-        }
-        ctx.restore();
-      } else {
-        origDrawJet(ctx, ent);
-      }
-    };
-  }
-
-  // --- SCRAP UPDATES ---
-  if (typeof window.showGameOver === 'function'){
-    const orig = window.showGameOver;
-    window.showGameOver = function(){
-      orig.apply(this, arguments);
-      totalScrap = Number(localStorage.getItem('jet_dogfight_scrap') || 0);
-      updateShop();
-    };
-  }
-
-  if (typeof window.showAntiCheat === 'function'){
-    const orig = window.showAntiCheat;
-    window.showAntiCheat = function(){
-      orig.apply(this, arguments);
-      totalScrap = Number(localStorage.getItem('jet_dogfight_scrap') || 0);
-      updateShop();
-    };
-  }
-
-  // --- HOTKEY TEST SWITCHING ---
-  window.addEventListener('keydown', e=>{
-    if (!window.player) return;
-    if (e.key === '1'){ switchJet('tigershark'); }
-    if (e.key === '2'){ switchJet('starfighter'); }
-  });
-
-  function switchJet(key){
-    const jet = jets[key];
-    if (!jet) return;
-    player.speed = jet.speed;
-    player.turnSpeed = jet.turn;
-    player.rotationOffset = jet.rotationOffset || 0;
-    selectedJet = key;
-    localStorage.setItem('selected_jet', key);
-    console.log(`✈️ Switched to ${jet.name}`);
-  }
-
-  // --- INIT ---
-  updateShop();
-})();
-</script>
-<!-- ============================
-     ADD-ON: Live Scrap Display + Boss Reward Banking
+     SCRAP REWARD, DISPLAY, AND AUTO-UNLOCK JETS
      ============================ -->
 <script>
 (function(){
   const BOSS_REWARD = 200;
 
-  /* -----------------------------
-     1. Create the scrap counter UI
-     ----------------------------- */
+  /* 1. Create Scrap Display UI */
   const scrapUI = document.createElement('div');
   scrapUI.id = "scrapCounterUI";
-  scrapUI.style.position = 'absolute';
-  scrapUI.style.top = '16px';
-  scrapUI.style.left = '120px'; /* just to the right of hearts */
-  scrapUI.style.fontFamily = "'Inter', sans-serif";
-  scrapUI.style.fontWeight = '800';
-  scrapUI.style.fontSize = '1.2rem';
-  scrapUI.style.color = '#fbbf24';
-  scrapUI.style.textShadow = '0 0 6px rgba(0,0,0,0.6)';
-  scrapUI.style.zIndex = '1002';
-  scrapUI.style.pointerEvents = 'none';
-  scrapUI.textContent = "Scrap: 0";
+  Object.assign(scrapUI.style,{
+    position:'absolute',top:'16px',left:'120px',
+    fontFamily:"'Inter',sans-serif",fontWeight:'800',
+    fontSize:'1.2rem',color:'#fbbf24',textShadow:'0 0 6px rgba(0,0,0,0.6)',
+    zIndex:'1002',pointerEvents:'none'
+  });
   document.body.appendChild(scrapUI);
-
-  function updateScrapUI(){
-    const total = Number(localStorage.getItem('jet_dogfight_scrap') || 0);
-    scrapUI.textContent = `Scrap: ${total}`;
-  }
-
+  const updateScrapUI = ()=> scrapUI.textContent = "Scrap: " + (localStorage.getItem('jet_dogfight_scrap')||0);
   updateScrapUI();
 
-  /* -----------------------------
-     2. Popup feedback function
-     ----------------------------- */
-  function showScrapPopup(text){
-    const popup = document.createElement('div');
-    popup.textContent = text;
-    Object.assign(popup.style, {
-      position: 'absolute',
-      right: '20px',
-      bottom: '60px',
-      color: '#22c55e',
-      fontWeight: '800',
-      fontSize: '1.2rem',
-      textShadow: '0 0 8px rgba(0,0,0,0.5)',
-      transition: 'all 1.2s ease-out',
-      zIndex: '2000'
+  const showScrapPopup = text => {
+    const popup=document.createElement('div');
+    popup.textContent=text;
+    Object.assign(popup.style,{
+      position:'absolute',right:'20px',bottom:'60px',
+      color:'#22c55e',fontWeight:'800',fontSize:'1.2rem',
+      textShadow:'0 0 8px rgba(0,0,0,0.5)',transition:'all 1.2s ease-out',zIndex:'2000'
     });
     document.body.appendChild(popup);
-    requestAnimationFrame(()=>{
-      popup.style.transform = 'translateY(-60px)';
-      popup.style.opacity = '0';
-    });
+    requestAnimationFrame(()=>{popup.style.transform='translateY(-60px)';popup.style.opacity='0';});
     setTimeout(()=>popup.remove(),1200);
-  }
+  };
 
-  /* -----------------------------
-     3. Hook into boss defeat logic
-     ----------------------------- */
-  if (window && typeof window.update === 'function') {
+  /* 2. Reward Scrap on Boss Defeat */
+  if (typeof window.update === 'function'){
     const origUpdate = window.update;
     window.update = function(dt){
       const beforeJet = window?.state?.defeatedJet;
@@ -1627,35 +1406,73 @@ window.addEventListener('load', function(){
       origUpdate(dt);
       const afterJet = window?.state?.defeatedJet;
       const afterTurret = window?.state?.defeatedTurret;
-
-      if ((afterJet && !beforeJet) || (afterTurret && !beforeTurret)){
-        let sessionScrap = window.sessionScrap || 0;
-        let totalScrap = Number(localStorage.getItem('jet_dogfight_scrap') || 0);
-
-        sessionScrap += BOSS_REWARD;
-        totalScrap += BOSS_REWARD;
-
-        window.sessionScrap = sessionScrap;
-        localStorage.setItem('jet_dogfight_scrap', totalScrap);
-
+      if ((afterJet && !beforeJet)||(afterTurret && !beforeTurret)){
+        let total = Number(localStorage.getItem('jet_dogfight_scrap')||0)+BOSS_REWARD;
+        localStorage.setItem('jet_dogfight_scrap',total);
+        window.sessionScrap = (window.sessionScrap||0)+BOSS_REWARD;
         showScrapPopup(`+${BOSS_REWARD} Scrap (Boss Destroyed!)`);
         updateScrapUI();
       }
     };
   }
 
-  /* -----------------------------
-     4. Keep the display synced on Game Over / Restart
-     ----------------------------- */
+  /* 3. Auto-Unlock Jets */
+  const jets = {
+    tigershark:{name:"F-20 Tigershark",speed:120,turn:3.5,cost:0,rotationOffset:0},
+    starfighter:{name:"F-104 Starfighter",speed:160,turn:2.3,cost:300,rotationOffset:Math.PI/2}
+  };
+
+  function getOwnedJets(){
+    const total=Number(localStorage.getItem('jet_dogfight_scrap')||0);
+    let owned=["tigershark"];
+    if(total>=jets.starfighter.cost)owned.push("starfighter");
+    localStorage.setItem('owned_jets',JSON.stringify(owned));
+    return owned;
+  }
+  function getSelectedJet(){return localStorage.getItem('selected_jet')||'tigershark';}
+  function setSelectedJet(k){localStorage.setItem('selected_jet',k);}
+
+  if(typeof window.resetGame==='function'){
+    const origReset=window.resetGame;
+    window.resetGame=function(){
+      origReset.apply(this,arguments);
+      const sel=getSelectedJet();
+      const owned=getOwnedJets();
+      const jet=jets[sel]||jets.tigershark;
+      if(window.player){
+        player.speed=jet.speed;
+        player.turnSpeed=jet.turn;
+        player.rotationOffset=jet.rotationOffset||0;
+      }
+      if(!owned.includes(sel))setSelectedJet('tigershark');
+      updateScrapUI();
+    };
+  }
+
+  /* 4. Rotate Starfighter’s Sprite */
+  if(typeof window.drawJet==='function'){
+    const origDrawJet=window.drawJet;
+    window.drawJet=function(ctx,ent){
+      if(ent.type==='player'&&window.player&&player.rotationOffset){
+        ctx.save();
+        ctx.translate(ent.x,ent.y);
+        ctx.rotate(ent.angle+player.rotationOffset);
+        const img=imgPlayerJet;
+        const w=ent.width,h=ent.height;
+        if(img&&img.complete&&img.width){ctx.drawImage(img,-w/2,-h/2,w,h);}
+        else{ctx.fillStyle=ent.color;ctx.beginPath();ctx.moveTo(h/2,0);ctx.lineTo(-h/2,w/2);ctx.lineTo(-h/3,0);ctx.lineTo(-h/2,-w/2);ctx.closePath();ctx.fill();}
+        ctx.restore();
+      }else origDrawJet(ctx,ent);
+    };
+  }
+
+  /* 5. Keep UI Synced */
   ['showGameOver','showAntiCheat','resetGame'].forEach(fn=>{
-    if (typeof window[fn] === 'function'){
-      const orig = window[fn];
-      window[fn] = function(){
-        const r = orig.apply(this, arguments);
-        updateScrapUI();
-        return r;
-      };
+    if(typeof window[fn]==='function'){
+      const orig=window[fn];
+      window[fn]=function(){const r=orig.apply(this,arguments);updateScrapUI();return r;};
     }
   });
 })();
 </script>
+
