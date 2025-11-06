@@ -141,7 +141,7 @@ let fireCheatTimer = 0;     // holding fire 10s
 let antiCheatTriggered = false;
 
 // Scrap & upgrades & jets
-let sessionScrap = 0;
+let sessionScrap = 2500;
 let totalScrap = Number(localStorage.getItem('jet_dogfight_scrap') || 0);
 const upgradeConfig = {
   speed: { name:(lvl)=>`Engine (Lvl ${lvl})`, baseCost:50, costScale:1.25, buff:0.03 },
