@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>Dogfight Destruction v1.1</title>
+<title>Dogfight Destruction v1.2</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -116,10 +116,76 @@ let upgrades = {
   scrap: Number(localStorage.getItem('jet_upg_scrap') || 0),
 };
 
+// ===== Sprites (SVG) =====
+// Base player jet (F-5 / Tigershark)
+const svgPlayer = `
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <g transform="translate(32,32)">
+    <polygon points="0,-28 8,-8 20,0 8,8 0,28 -8,8 -20,0 -8,-8" fill="#3B82F6" stroke="#1e3a8a" stroke-width="1"/>
+    <polygon points="0,-24 5,-8 12,0 5,8 0,24 -5,8 -12,0 -5,-8" fill="#60A5FA"/>
+    <ellipse cx="0" cy="-8" rx="4" ry="5" fill="#93C5FD"/>
+    <polygon points="-6,12 -10,18 -6,12" fill="#1e3a8a" opacity="0.6"/>
+    <polygon points="6,12 10,18 6,12" fill="#1e3a8a" opacity="0.6"/>
+  </g>
+</svg>`;
+
+// Enemy (red)
+const svgEnemy = `
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <g transform="translate(32,32)">
+    <polygon points="0,-28 8,-8 20,0 8,8 0,28 -8,8 -20,0 -8,-8" fill="#EF4444" stroke="#7f1d1d" stroke-width="1"/>
+    <polygon points="0,-24 5,-8 12,0 5,8 0,24 -5,8 -12,0 -5,-8" fill="#F87171"/>
+    <ellipse cx="0" cy="-8" rx="4" ry="5" fill="#FECACA"/>
+    <polygon points="-6,12 -10,18 -6,12" fill="#7f1d1d" opacity="0.6"/>
+    <polygon points="6,12 10,18 6,12" fill="#7f1d1d" opacity="0.6"/>
+  </g>
+</svg>`;
+
+// F-16 (arrow wing, lighter blue/silver)
+const svgF16 = `
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <g transform="translate(32,32)">
+    <!-- Nose longer, wings sharper -->
+    <polygon points="0,-30 9,-10 18,-2 9,6 0,26 -9,6 -18,-2 -9,-10" fill="#60A5FA" stroke="#1e3a8a" stroke-width="1"/>
+    <polygon points="0,-26 6,-10 11,-3 6,4 0,22 -6,4 -11,-3 -6,-10" fill="#93C5FD"/>
+    <!-- Canopy -->
+    <ellipse cx="0" cy="-10" rx="3.5" ry="5" fill="#E5E7EB" opacity="0.85"/>
+    <!-- Tail wedge -->
+    <polygon points="-5,12 -8,19 -5,12" fill="#1e3a8a" opacity="0.5"/>
+    <polygon points="5,12 8,19 5,12" fill="#1e3a8a" opacity="0.5"/>
+  </g>
+</svg>`;
+
+// F-22 (delta wing, darker blue-gray)
+const svgF22 = `
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <g transform="translate(32,32)">
+    <!-- Broad delta shape -->
+    <polygon points="0,-26 12,-10 22,0 12,10 0,22 -12,10 -22,0 -12,-10" fill="#1E40AF" stroke="#0f172a" stroke-width="1"/>
+    <polygon points="0,-22 9,-10 16,0 9,8 0,18 -9,8 -16,0 -9,-10" fill="#64748B"/>
+    <!-- Canopy -->
+    <ellipse cx="0" cy="-8" rx="3.5" ry="4.5" fill="#A7C0D8" opacity="0.9"/>
+    <!-- Stealthy tail facets -->
+    <polygon points="-6,8 -10,14 -6,8" fill="#0f172a" opacity="0.45"/>
+    <polygon points="6,8 10,14 6,8" fill="#0f172a" opacity="0.45"/>
+  </g>
+</svg>`;
+
+// SVG → Image helpers
+function svgToImg(svg, onload){ const img=new Image(); img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg); img.onload=()=>onload&&onload(img); return img; }
+const imgPlayerJet = svgToImg(svgPlayer);
+const imgEnemyJet  = svgToImg(svgEnemy);
+const imgF16       = svgToImg(svgF16);
+const imgF22       = svgToImg(svgF22);
+
+// ===== Jet defs (incl. new models) =====
 const jets = {
-  tigershark:{ key:'tigershark', name:'F-20 Tigershark', desc:'Balanced starter jet.', speed:120, turn:3.5, cost:0, rotationOffset:0 },
-  // same model as player, rotated +90°
-  starfighter:{ key:'starfighter', name:'F-104 Starfighter', desc:'Faster but less agile. Same model, 90° rotated.', speed:160, turn:2.3, cost:300, rotationOffset:Math.PI/2 }
+  tigershark:{ key:'tigershark', name:'F-20 Tigershark', desc:'Balanced starter jet.', speed:120, turn:3.5, cost:0, rotationOffset:0, sprite:'tigershark' },
+  // same model as player, rotated 90°
+  starfighter:{ key:'starfighter', name:'F-104 Starfighter', desc:'Very fast, harder to handle.', speed:160, turn:2.3, cost:500, rotationOffset:Math.PI/2, sprite:'tigershark' },
+  // new shapes
+  f16:{ key:'f16', name:'F-16 Fighting Falcon', desc:'Highly maneuverable arrow wing.', speed:140, turn:4.0, cost:1000, rotationOffset:0, sprite:'f16' },
+  f22:{ key:'f22', name:'F-22 Raptor', desc:'Stealthy delta wing, fast & agile.', speed:150, turn:4.0, cost:2500, rotationOffset:0, sprite:'f22' },
 };
 function getSelectedJet(){ return localStorage.getItem('selected_jet') || 'tigershark'; }
 function setSelectedJet(k){ localStorage.setItem('selected_jet', k); }
@@ -139,38 +205,13 @@ const bossState = {
 };
 window.bossState = bossState; // exposed for debugging
 
-// SVG sprites → images
-const svgPlayer = `
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <g transform="translate(32,32)">
-    <polygon points="0,-28 8,-8 20,0 8,8 0,28 -8,8 -20,0 -8,-8" fill="#3B82F6" stroke="#1e3a8a" stroke-width="1"/>
-    <polygon points="0,-24 5,-8 12,0 5,8 0,24 -5,8 -12,0 -5,-8" fill="#60A5FA"/>
-    <ellipse cx="0" cy="-8" rx="4" ry="5" fill="#93C5FD"/>
-    <polygon points="-6,12 -10,18 -6,12" fill="#1e3a8a" opacity="0.6"/>
-    <polygon points="6,12 10,18 6,12" fill="#1e3a8a" opacity="0.6"/>
-  </g>
-</svg>`;
-const svgEnemy = `
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <g transform="translate(32,32)">
-    <polygon points="0,-28 8,-8 20,0 8,8 0,28 -8,8 -20,0 -8,-8" fill="#EF4444" stroke="#7f1d1d" stroke-width="1"/>
-    <polygon points="0,-24 5,-8 12,0 5,8 0,24 -5,8 -12,0 -5,-8" fill="#F87171"/>
-    <ellipse cx="0" cy="-8" rx="4" ry="5" fill="#FECACA"/>
-    <polygon points="-6,12 -10,18 -6,12" fill="#7f1d1d" opacity="0.6"/>
-    <polygon points="6,12 10,18 6,12" fill="#7f1d1d" opacity="0.6"/>
-  </g>
-</svg>`;
-function svgToImg(svg, onload){ const img=new Image(); img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg); img.onload=()=>onload&&onload(img); return img; }
-const imgPlayerJet = svgToImg(svgPlayer);
-const imgEnemyJet  = svgToImg(svgEnemy);
-
 // Helpers
 function resizeCanvas(){ canvas.width = innerWidth; canvas.height = innerHeight; }
 function rand(min,max){ return Math.random()*(max-min)+min; }
 function dist(x1,y1,x2,y2){ return Math.hypot(x2-x1,y2-y1); }
 function wrapAngle(a){ return (a + Math.PI) % (Math.PI*2) - Math.PI; }
 function jet(x,y,angle,speed,turn,type,color){
-  return { x,y,angle,speed,turnSpeed:turn,type,color,width:PLAYER.width,height:PLAYER.height,radius:PLAYER.radius,velX:0,velY:0,spawnTime:gameTime,rotationOffset:0 };
+  return { x,y,angle,speed,turnSpeed:turn,type,color,width:PLAYER.width,height:PLAYER.height,radius:PLAYER.radius,velX:0,velY:0,spawnTime:gameTime,rotationOffset:0, spriteKey:'tigershark' };
 }
 
 // UI bits (hearts + scrap counter)
@@ -237,7 +278,10 @@ function resetGame(){
   antiCheatTimer=0; turnCheatTimer=0; fireCheatTimer=0; antiCheatTriggered=false;
 
   // apply selected jet & upgrades
-  const sel = getSelectedJet(); const j = jets[sel] || jets.tigershark; player.speed=j.speed; player.turnSpeed=j.turn; player.rotationOffset=j.rotationOffset||0; // same sprite, rotated
+  const selKey = getSelectedJet();
+  const j = jets[selKey] || jets.tigershark;
+  player.speed=j.speed; player.turnSpeed=j.turn; player.rotationOffset=j.rotationOffset||0; player.spriteKey = j.sprite || 'tigershark';
+
   // upgrades
   player.speed = player.speed * (1 + upgrades.speed * upgradeConfig.speed.buff);
   player.turnSpeed = player.turnSpeed * (1 + upgrades.turn * upgradeConfig.turn.buff);
@@ -290,8 +334,7 @@ function update(dt){
   for (let i=enemies.length-1;i>=0;i--){ for (let j=i-1;j>=0;j--){ if (i>=enemies.length||j>=enemies.length) continue; const a=enemies[i], b=enemies[j]; if (gameTime-a.spawnTime<ENEMY_SPAWN_INVULN || gameTime-b.spawnTime<ENEMY_SPAWN_INVULN) continue; if (dist(a.x,a.y,b.x,b.y) < a.radius+b.radius){ createExplosion(a.x,a.y,12); createExplosion(b.x,b.y,12); enemies.splice(i,1); enemies.splice(j,1); score+=200; } } }
 
   // player vs enemy
-  for (let i=enemies.length-1;i>=0;i--){ const e=enemies[i]; if (gameTime-e.spawnTime<ENEMY_SPAWN_INVULN) continue; if (dist(player.x,player.y,e.x,e.y) < player.radius+e.radius){ if (heartsUI.hitOrGameOver()) { // consume a heart
-        enemies.splice(i,1); createExplosion(player.x,player.y,20);
+  for (let i=enemies.length-1;i>=0;i--){ const e=enemies[i]; if (gameTime-e.spawnTime<ENEMY_SPAWN_INVULN) continue; if (dist(player.x,player.y,e.x,e.y) < player.radius+e.radius){ if (heartsUI.hitOrGameOver()) { enemies.splice(i,1); createExplosion(player.x,player.y,20);
       } else { createExplosion(player.x,player.y,28); showGameOver(); return; } } }
 
   // particles
@@ -308,7 +351,7 @@ function update(dt){
     // vs enemies
     for (let j=enemies.length-1;j>=0;j--){ let e=enemies[j]; if (dist(b.x,b.y,e.x,e.y) < BULLET_RADIUS+e.radius){ createExplosion(e.x,e.y,14); enemies.splice(j,1); bullets.splice(i,1); score+=100; sessionScrap += Math.floor(5 * (1 + upgrades.scrap*upgradeConfig.scrap.buff)); break; } }
     // vs boss
-    if (bossState.active && bossState.current){ const br = (bossState.type==='jet') ? bossState.current.radius : BOSS.turret.radius; if (dist(b.x,b.y,bossState.current.x,bossState.current.y) < BULLET_RADIUS + br){ bullets.splice(i,1); bossState.current.hp -= 1; particles.push({x:b.x,y:b.y,dx:rand(-60,60),dy:rand(-60,60),life:.3,maxLife:.3,size:3}); if (bossState.current.hp<=0){ createExplosion(bossState.current.x,bossState.current.y,60); score += BOSS.BONUS_SCORE; totalScrap += BOSS.REWARD_SCRAP; localStorage.setItem('jet_dogfight_scrap', totalScrap); heartsUI.updateScrap(); // mark defeated
+    if (bossState.active && bossState.current){ const br = (bossState.type==='jet') ? bossState.current.radius : BOSS.turret.radius; if (dist(b.x,b.y,bossState.current.x,bossState.current.y) < BULLET_RADIUS + br){ bullets.splice(i,1); bossState.current.hp -= 1; particles.push({x:b.x,y:b.y,dx:rand(-60,60),dy:rand(-60,60),life:.3,maxLife:.3,size:3}); if (bossState.current.hp<=0){ createExplosion(bossState.current.x,bossState.current.y,60); score += BOSS.BONUS_SCORE; totalScrap += BOSS.REWARD_SCRAP; localStorage.setItem('jet_dogfight_scrap', totalScrap); heartsUI.updateScrap();
             if (bossState.type==='jet') bossState.defeatedJet=true; if (bossState.type==='turret') bossState.defeatedTurret=true; bossState.active=false; bossState.type=null; bossState.current=null; bossState.bossShots.length=0; }
       }
     }
@@ -324,12 +367,59 @@ function update(dt){
   scoreDisplay.textContent = score;
 }
 
-function drawMiniMap(){ const s=140,m=16,x=canvas.width-s-m,y=m, scale=s/MINIMAP_SCOPE; ctx.save(); ctx.translate(x,y); ctx.fillStyle='rgba(0,0,0,.28)'; ctx.fillRect(0,0,s,s); ctx.strokeStyle='#fff'; ctx.lineWidth=1.6; ctx.strokeRect(0,0,s,s); // player dot
-  ctx.globalAlpha=1; ctx.fillStyle=player.color; ctx.beginPath(); ctx.arc(s/2,s/2,3,0,Math.PI*2); ctx.fill(); for (let e of enemies){ const rx=e.x-player.x, ry=e.y-player.y; const dx=(rx*scale)+(s/2), dy=(ry*scale)+(s/2); ctx.globalAlpha=(gameTime - e.spawnTime < ENEMY_SPAWN_INVULN)?0.5:1; if (dx>0&&dx<s&&dy>0&&dy<s){ ctx.fillStyle='#EF4444'; ctx.beginPath(); ctx.arc(dx,dy,2,0,Math.PI*2); ctx.fill(); } } ctx.globalAlpha=1; ctx.restore(); }
+function drawMiniMap(){ const s=140,m=16,x=canvas.width-s-m,y=m, scale=s/MINIMAP_SCOPE; ctx.save(); ctx.translate(x,y); ctx.fillStyle='rgba(0,0,0,.28)'; ctx.fillRect(0,0,s,s); ctx.strokeStyle='#fff'; ctx.lineWidth=1.6; ctx.strokeRect(0,0,s,s);
+  ctx.globalAlpha=1; ctx.fillStyle=player.color; ctx.beginPath(); ctx.arc(s/2,s/2,3,0,Math.PI*2); ctx.fill();
+  for (let e of enemies){ const rx=e.x-player.x, ry=e.y-player.y; const dx=(rx*scale)+(s/2), dy=(ry*scale)+(s/2); ctx.globalAlpha=(gameTime - e.spawnTime < ENEMY_SPAWN_INVULN)?0.5:1; if (dx>0&&dx<s&&dy>0&&dy<s){ ctx.fillStyle='#EF4444'; ctx.beginPath(); ctx.arc(dx,dy,2,0,Math.PI*2); ctx.fill(); } } ctx.globalAlpha=1; ctx.restore(); }
 
-function drawJetEntity(ent){ ctx.save(); ctx.translate(ent.x, ent.y); ctx.rotate(ent.angle + (ent.rotationOffset||0)); const img = (ent.type==='enemy'||ent.type==='bossJet') ? imgEnemyJet : imgPlayerJet; const w=ent.width||PLAYER.width, h=ent.height||PLAYER.height; if (img && img.complete && img.width){ ctx.drawImage(img, -w/2, -h/2, w, h); } else { ctx.fillStyle = ent.color||'#3B82F6'; ctx.beginPath(); ctx.moveTo(h/2,0); ctx.lineTo(-h/2, w/2); ctx.lineTo(-h/3,0); ctx.lineTo(-h/2, -w/2); ctx.closePath(); ctx.fill(); } if (DEBUG){ ctx.strokeStyle='#00ff00'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(0,0,ent.radius||PLAYER.radius,0,Math.PI*2); ctx.stroke(); } ctx.restore(); }
+function getPlayerSpriteImage(){
+  switch (player.spriteKey){
+    case 'f16': return imgF16;
+    case 'f22': return imgF22;
+    case 'tigershark': return imgPlayerJet;
+    case 'starfighter': return imgPlayerJet; // same model, rotated 90°
+    default: return imgPlayerJet;
+  }
+}
 
-function draw(){ ctx.clearRect(0,0,canvas.width,canvas.height); camera.x = (player&&player.x!==undefined)?player.x:0; camera.y = (player&&player.y!==undefined)?player.y:0; ctx.save(); ctx.translate(canvas.width/2 - camera.x, canvas.height/2 - camera.y);
+function drawJetEntity(ent){
+  ctx.save();
+  ctx.translate(ent.x, ent.y);
+  // Starfighter uses base sprite rotated; others may not
+  const rotation = ent.rotationOffset || 0;
+  ctx.rotate(ent.angle + rotation);
+  let img;
+  if (ent.type==='enemy' || ent.type==='bossJet'){
+    img = imgEnemyJet;
+  } else if (ent.type==='player'){
+    img = getPlayerSpriteImage();
+  } else {
+    img = imgPlayerJet;
+  }
+  const w=ent.width||PLAYER.width, h=ent.height||PLAYER.height;
+  if (img && img.complete && img.width){
+    ctx.drawImage(img, -w/2, -h/2, w, h);
+  } else {
+    ctx.fillStyle = ent.color||'#3B82F6';
+    ctx.beginPath();
+    ctx.moveTo(h/2,0);
+    ctx.lineTo(-h/2, w/2);
+    ctx.lineTo(-h/3,0);
+    ctx.lineTo(-h/2, -w/2);
+    ctx.closePath();
+    ctx.fill();
+  }
+  if (DEBUG){
+    ctx.strokeStyle='#00ff00'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(0,0,ent.radius||PLAYER.radius,0,Math.PI*2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  camera.x = (player&&player.x!==undefined)?player.x:0;
+  camera.y = (player&&player.y!==undefined)?player.y:0;
+  ctx.save();
+  ctx.translate(canvas.width/2 - camera.x, canvas.height/2 - camera.y);
   // contrails
   for (let s of contrails){ s.life -= 0.02; ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.angle); ctx.fillStyle = `rgba(255,255,255,${Math.max(0, s.life * 0.45)})`; ctx.fillRect(-12,-2.5,24,5); ctx.restore(); }
   // particles
@@ -340,15 +430,21 @@ function draw(){ ctx.clearRect(0,0,canvas.width,canvas.height); camera.x = (play
   if (player) drawJetEntity(player);
   for (let e of enemies) drawJetEntity(e);
   // boss
-  if (bossState.active && bossState.current){ if (bossState.type==='jet'){ const b=bossState.current; drawJetEntity({ ...b, type:'bossJet', color:'#DC2626' }); } else { const b=bossState.current; // turret
-      ctx.save(); ctx.translate(b.x,b.y); ctx.fillStyle='#7f1d1d'; ctx.beginPath(); ctx.arc(0,0,BOSS.turret.radius,0,Math.PI*2); ctx.fill(); ctx.rotate(b.angle); ctx.fillStyle='#ef4444'; ctx.fillRect(0,-6,BOSS.turret.radius+18,12); ctx.restore(); }
-    // boss shots
+  if (bossState.active && bossState.current){
+    if (bossState.type==='jet'){ const b=bossState.current; drawJetEntity({ ...b, type:'bossJet', color:'#DC2626' }); }
+    else { const b=bossState.current; ctx.save(); ctx.translate(b.x,b.y); ctx.fillStyle='#7f1d1d'; ctx.beginPath(); ctx.arc(0,0,BOSS.turret.radius,0,Math.PI*2); ctx.fill(); ctx.rotate(b.angle); ctx.fillStyle='#ef4444'; ctx.fillRect(0,-6,BOSS.turret.radius+18,12); ctx.restore(); }
     for (const s of bossState.bossShots){ ctx.fillStyle='#ff6b6b'; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=2; ctx.stroke(); }
   }
   ctx.restore();
   if (player) drawMiniMap();
   // boss HP bar
-  if (bossState.active && bossState.current){ const hp=bossState.current.hp, max=bossState.current.maxHp; const frac=Math.max(0,Math.min(1,hp/max)); const x=(canvas.width-BOSS.hpBar.w)/2, y=BOSS.hpBar.y; ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(x,y,BOSS.hpBar.w,BOSS.hpBar.h); ctx.fillStyle='#ef4444'; ctx.fillRect(x,y,BOSS.hpBar.w*frac,BOSS.hpBar.h); ctx.strokeStyle='#111'; ctx.lineWidth=2; ctx.strokeRect(x,y,BOSS.hpBar.w,BOSS.hpBar.h); }
+  if (bossState.active && bossState.current){
+    const hp=bossState.current.hp, max=bossState.current.maxHp; const frac=Math.max(0,Math.min(1,hp/max));
+    const x=(canvas.width-BOSS.hpBar.w)/2, y=BOSS.hpBar.y;
+    ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(x,y,BOSS.hpBar.w,BOSS.hpBar.h);
+    ctx.fillStyle='#ef4444'; ctx.fillRect(x,y,BOSS.hpBar.w*frac,BOSS.hpBar.h);
+    ctx.strokeStyle='#111'; ctx.lineWidth=2; ctx.strokeRect(x,y,BOSS.hpBar.w,BOSS.hpBar.h);
+  }
   heartsUI.drawOverlay();
 }
 
@@ -357,8 +453,42 @@ function getUpgradeCost(key){ const lvl=upgrades[key]; const cfg=upgradeConfig[k
 function bankSessionScrap(){ totalScrap += sessionScrap; localStorage.setItem('jet_dogfight_scrap', totalScrap); sessionScrap=0; heartsUI.updateScrap(); }
 function buyUpgrade(key){ const cost=getUpgradeCost(key); if (totalScrap>=cost){ totalScrap-=cost; upgrades[key]++; localStorage.setItem('jet_dogfight_scrap', totalScrap); localStorage.setItem('jet_upg_'+key, upgrades[key]); updateShopUI(); } }
 function ownedJets(){ const owned=['tigershark']; for (const k in jets){ if (totalScrap>=jets[k].cost) owned.push(k); } return [...new Set(owned)]; }
-function updateShopUI(){ const totalScrapDisplay=document.getElementById('totalScrapDisplay'); const jetScrapDisplay=document.getElementById('jetScrapDisplay'); const upgWrap=document.getElementById('upgradeButtons'); const jetWrap=document.getElementById('jetButtons'); if (!upgWrap||!jetWrap) return; if (totalScrapDisplay) totalScrapDisplay.textContent=totalScrap; if (jetScrapDisplay) jetScrapDisplay.textContent=totalScrap; upgWrap.innerHTML=''; for (const k in upgradeConfig){ const lvl=upgrades[k]; const cost=getUpgradeCost(k); const btn=document.createElement('button'); btn.className='shop-btn'; btn.textContent = `${upgradeConfig[k].name(lvl)} — `; const span=document.createElement('span'); span.textContent = cost + ' Scrap'; btn.appendChild(span); btn.disabled = totalScrap < cost; btn.title = `Cost: ${cost} Scrap`; btn.addEventListener('click',()=>buyUpgrade(k)); upgWrap.appendChild(btn); }
-  jetWrap.innerHTML=''; const owned=ownedJets(); const selected=getSelectedJet(); for (const k in jets){ const j=jets[k]; const btn=document.createElement('button'); btn.className='shop-btn jet-btn'; btn.innerHTML = `${j.name}<span>${owned.includes(k)? (selected===k?'Selected':'Unlocked') : (j.cost+' Scrap')}</span><br><small>${j.desc}</small>`; btn.disabled = !owned.includes(k); if (selected===k) btn.classList.add('selected'); btn.addEventListener('click',()=>{ if (!btn.disabled){ setSelectedJet(k); updateShopUI(); } }); jetWrap.appendChild(btn); }
+function updateShopUI(){
+  const totalScrapDisplay=document.getElementById('totalScrapDisplay');
+  const jetScrapDisplay=document.getElementById('jetScrapDisplay');
+  const upgWrap=document.getElementById('upgradeButtons');
+  const jetWrap=document.getElementById('jetButtons');
+  if (!upgWrap||!jetWrap) return;
+  if (totalScrapDisplay) totalScrapDisplay.textContent=totalScrap;
+  if (jetScrapDisplay) jetScrapDisplay.textContent=totalScrap;
+
+  // Upgrades
+  upgWrap.innerHTML='';
+  for (const k in upgradeConfig){
+    const lvl=upgrades[k]; const cost=getUpgradeCost(k);
+    const btn=document.createElement('button'); btn.className='shop-btn';
+    btn.textContent = `${upgradeConfig[k].name(lvl)} — `;
+    const span=document.createElement('span'); span.textContent = cost + ' Scrap';
+    btn.appendChild(span);
+    btn.disabled = totalScrap < cost; btn.title = `Cost: ${cost} Scrap`;
+    btn.addEventListener('click',()=>buyUpgrade(k));
+    upgWrap.appendChild(btn);
+  }
+
+  // Jets
+  jetWrap.innerHTML='';
+  const owned=ownedJets(); const selected=getSelectedJet();
+  // Order for display
+  const order = ['tigershark','starfighter','f16','f22'];
+  for (const k of order){
+    const j=jets[k]; if (!j) continue;
+    const btn=document.createElement('button'); btn.className='shop-btn jet-btn';
+    btn.innerHTML = `${j.name}<span>${owned.includes(k)? (selected===k?'Selected':'Unlocked') : (j.cost+' Scrap')}</span><br><small>${j.desc}</small>`;
+    btn.disabled = !owned.includes(k);
+    if (selected===k) btn.classList.add('selected');
+    btn.addEventListener('click',()=>{ if (!btn.disabled){ setSelectedJet(k); updateShopUI(); } });
+    jetWrap.appendChild(btn);
+  }
 }
 
 // Inputs
@@ -366,7 +496,10 @@ restartButton.addEventListener('click', ()=>{ resetGame(); });
 addEventListener('resize', resizeCanvas);
 addEventListener('keydown', e=>{
   if (gameState==='menu'){ lore.maybeStart(resetGame); return; }
-  if (e.key==='p' || e.key==='P'){ if (gameState==='playing'){ gameState='paused'; messageOverlay.textContent='PAUSED · Press P to Resume'; messageOverlay.style.display='block'; } else if (gameState==='paused'){ gameState='playing'; messageOverlay.style.display='none'; } }
+  if (e.key==='p' || e.key==='P'){
+    if (gameState==='playing'){ gameState='paused'; messageOverlay.textContent='PAUSED · Press P to Resume'; messageOverlay.style.display='block'; }
+    else if (gameState==='paused'){ gameState='playing'; messageOverlay.style.display='none'; }
+  }
   if (e.key==='ArrowLeft') input.left=true;
   if (e.key==='ArrowRight') input.right=true;
   if (e.code==='Space') input.fire=true;
