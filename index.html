@@ -213,7 +213,7 @@ const jets = {
   tigershark:{ key:'tigershark', name:'F-20 Tigershark', desc:'Balanced starter jet.', speed:120, turn:3.5, cost:0,   rotationOffset:0, sprite:'tigershark' },
   starfighter:{ key:'starfighter', name:'F-104 Starfighter', desc:'Very fast, harder to handle.', speed:160, turn:2.3, cost:500, rotationOffset:Math.PI/2, sprite:'tigershark' },
   f16:{ key:'f16', name:'F-16 Fighting Falcon', desc:'Highly maneuverable arrow wing.', speed:140, turn:4.0, cost:1000, rotationOffset:0, sprite:'f16' },
-  f22:{ key:'f22', name:'F-22 Raptor', desc:'Stealthy delta wing, fast & agile.', speed:150, turn:4.0, cost:2500, rotationOffset:0, sprite:'f22' },
+  f22:{ key:'f22', name:'F-22 Raptor', desc:'Stealthy delta wing, fast & agile.', speed:150, turn:4.0, cost:2500, rotationOffset:Math.PI/2, sprite:'f22' },
 };
 function getSelectedJet(){ return localStorage.getItem('selected_jet') || 'tigershark'; }
 function setSelectedJet(k){ localStorage.setItem('selected_jet', k); }
