@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>Dogfight Destruction v1.2</title>
+<title>Dogfight Destruction v1.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -21,22 +21,52 @@
   .touch-zone{position:absolute;top:0;width:50%;height:100%;z-index:3;pointer-events:auto}
   #touchLeft{left:0}
   #touchRight{right:0}
-  .hint{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);font-weight:700;pointer-events:none;color:rgba(3,37,65,.9)}
   .shop-btn{font-family:'Inter',sans-serif;background:#4B5563;color:#F3F4F6;border:none;padding:.6rem 1rem;border-radius:6px;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .18s ease;text-align:left}
   .shop-btn:hover{background:#6B7280}
   .shop-btn:disabled{background:#374151;color:#9CA3AF;cursor:not-allowed;opacity:.7}
   .shop-btn span{float:right;opacity:.9}
   .jet-btn.selected{background:#2563eb;color:#fff}
+
+  /* ===== Terminal Intro (CRT) ===== */
+  #terminalOverlay{
+    position:absolute; inset:0; background:#000; color:#0c0; /* #00CC00 classic CRT */
+    display:none; z-index:9999; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+  #terminalBox{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:min(900px, 92vw); padding:24px 28px; border:2px solid #093; border-radius:10px;
+    background: linear-gradient(180deg, rgba(0,20,0,.9), rgba(0,0,0,.95));
+    box-shadow: 0 0 30px rgba(0,255,90,.15), inset 0 0 24px rgba(0,255,70,.08);
+  }
+  #terminalText{ white-space:pre-wrap; line-height:1.35; font-size:18px; color:#0c0; text-shadow:0 0 6px rgba(0,255,80,.35); min-height:260px }
+  .crt-header{ color:#8f8; }
+  .crt-rule{ color:#0c0; opacity:.9 }
+  #terminalPrompt{
+    margin-top:16px; text-align:center; font-weight:800; letter-spacing:.5px; color:#9f9; 
+    animation:blink 1.2s steps(2,start) infinite;
+    text-shadow:0 0 6px rgba(0,255,80,.35);
+  }
+  @keyframes blink{ 50%{opacity:.25} }
+  /* subtle CRT scanline + vignette */
+  #terminalOverlay:after{
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:
+      linear-gradient(rgba(0,0,0,.0) 50%, rgba(0,0,0,.07) 50%) 0 0/100% 3px,
+      radial-gradient(ellipse at center, rgba(0,255,80,.05), rgba(0,0,0,.5) 70%);
+    mix-blend-mode:screen;
+  }
 </style>
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
 <div class="touch-zone" id="touchLeft"></div>
 <div class="touch-zone" id="touchRight"></div>
+
 <div class="ui-container">
   <div id="scoreDisplay">0</div>
   <div id="messageOverlay">Tap/Press Left/Right to Steer — Spacebar to Shoot · Press any key to Start<br>Press <strong>P</strong> to Pause</div>
 </div>
+
 <div id="gameOverModal">
   <h1>Game Over</h1>
   <p>Score: <strong><span id="finalScore">0</span></strong></p>
@@ -54,6 +84,14 @@
     </div>
   </div>
   <button id="restartButton">Retry</button>
+</div>
+
+<!-- ===== Terminal Intro DOM ===== -->
+<div id="terminalOverlay">
+  <div id="terminalBox">
+    <div id="terminalText"></div>
+    <div id="terminalPrompt">Press any key to start…</div>
+  </div>
 </div>
 
 <script>
@@ -76,7 +114,7 @@ const MINIMAP_SCOPE = 4000;
 const ENEMY_SPAWN_INVULN = 1.5;
 const DEBUG = false;
 
-let gameState = 'menu'; // menu | lore | playing | paused | gameOver
+let gameState = 'menu'; // menu | intro | playing | paused | gameOver
 let score = 0, lastTime = 0, gameTime = 0;
 let highScore = Number(localStorage.getItem('jet_dogfight_high') || 0);
 
@@ -117,7 +155,6 @@ let upgrades = {
 };
 
 // ===== Sprites (SVG) =====
-// Base player jet (F-5 / Tigershark)
 const svgPlayer = `
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
   <g transform="translate(32,32)">
@@ -129,7 +166,6 @@ const svgPlayer = `
   </g>
 </svg>`;
 
-// Enemy (red)
 const svgEnemy = `
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
   <g transform="translate(32,32)">
@@ -145,12 +181,9 @@ const svgEnemy = `
 const svgF16 = `
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
   <g transform="translate(32,32)">
-    <!-- Nose longer, wings sharper -->
     <polygon points="0,-30 9,-10 18,-2 9,6 0,26 -9,6 -18,-2 -9,-10" fill="#60A5FA" stroke="#1e3a8a" stroke-width="1"/>
     <polygon points="0,-26 6,-10 11,-3 6,4 0,22 -6,4 -11,-3 -6,-10" fill="#93C5FD"/>
-    <!-- Canopy -->
     <ellipse cx="0" cy="-10" rx="3.5" ry="5" fill="#E5E7EB" opacity="0.85"/>
-    <!-- Tail wedge -->
     <polygon points="-5,12 -8,19 -5,12" fill="#1e3a8a" opacity="0.5"/>
     <polygon points="5,12 8,19 5,12" fill="#1e3a8a" opacity="0.5"/>
   </g>
@@ -160,12 +193,9 @@ const svgF16 = `
 const svgF22 = `
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
   <g transform="translate(32,32)">
-    <!-- Broad delta shape -->
     <polygon points="0,-26 12,-10 22,0 12,10 0,22 -12,10 -22,0 -12,-10" fill="#1E40AF" stroke="#0f172a" stroke-width="1"/>
     <polygon points="0,-22 9,-10 16,0 9,8 0,18 -9,8 -16,0 -9,-10" fill="#64748B"/>
-    <!-- Canopy -->
     <ellipse cx="0" cy="-8" rx="3.5" ry="4.5" fill="#A7C0D8" opacity="0.9"/>
-    <!-- Stealthy tail facets -->
     <polygon points="-6,8 -10,14 -6,8" fill="#0f172a" opacity="0.45"/>
     <polygon points="6,8 10,14 6,8" fill="#0f172a" opacity="0.45"/>
   </g>
@@ -180,10 +210,8 @@ const imgF22       = svgToImg(svgF22);
 
 // ===== Jet defs (incl. new models) =====
 const jets = {
-  tigershark:{ key:'tigershark', name:'F-20 Tigershark', desc:'Balanced starter jet.', speed:120, turn:3.5, cost:0, rotationOffset:0, sprite:'tigershark' },
-  // same model as player, rotated 90°
+  tigershark:{ key:'tigershark', name:'F-20 Tigershark', desc:'Balanced starter jet.', speed:120, turn:3.5, cost:0,   rotationOffset:0, sprite:'tigershark' },
   starfighter:{ key:'starfighter', name:'F-104 Starfighter', desc:'Very fast, harder to handle.', speed:160, turn:2.3, cost:500, rotationOffset:Math.PI/2, sprite:'tigershark' },
-  // new shapes
   f16:{ key:'f16', name:'F-16 Fighting Falcon', desc:'Highly maneuverable arrow wing.', speed:140, turn:4.0, cost:1000, rotationOffset:0, sprite:'f16' },
   f22:{ key:'f22', name:'F-22 Raptor', desc:'Stealthy delta wing, fast & agile.', speed:150, turn:4.0, cost:2500, rotationOffset:0, sprite:'f22' },
 };
@@ -203,7 +231,7 @@ const bossState = {
   active:false, type:null, current:null, bossShots:[],
   defeatedJet:false, defeatedTurret:false
 };
-window.bossState = bossState; // exposed for debugging
+window.bossState = bossState; // debug
 
 // Helpers
 function resizeCanvas(){ canvas.width = innerWidth; canvas.height = innerHeight; }
@@ -213,6 +241,64 @@ function wrapAngle(a){ return (a + Math.PI) % (Math.PI*2) - Math.PI; }
 function jet(x,y,angle,speed,turn,type,color){
   return { x,y,angle,speed,turnSpeed:turn,type,color,width:PLAYER.width,height:PLAYER.height,radius:PLAYER.radius,velX:0,velY:0,spawnTime:gameTime,rotationOffset:0, spriteKey:'tigershark' };
 }
+
+// ===== Terminal Intro (replaces old scroll) =====
+const terminal = (()=>{
+  const overlay = document.getElementById('terminalOverlay');
+  const textEl  = document.getElementById('terminalText');
+  const prompt  = document.getElementById('terminalPrompt');
+
+  const LINES = [
+    "=================================================",
+    "MISSION BRIEFING — 17 MAY 2005 — IRAQ",
+    "",
+    "Extraction of U.S. Troops from Iraq.",
+    "Mission: Destroy all targets.",
+    "Objective: Reach deep into enemy lines and",
+    "destroy their cargo plane carrying ammunition.",
+    "",
+    "Be safe, pilot. Good luck.",
+    "================================================="
+  ];
+
+  let idx = 0, active = false, typer;
+
+  function show(next){
+    overlay.style.display = 'block';
+    textEl.textContent = "";
+    prompt.style.visibility = 'hidden';
+    active = true;
+
+    typer = setInterval(()=>{
+      if (idx < LINES.length){
+        textEl.textContent += (idx ? "\n" : "") + LINES[idx++];
+      } else {
+        clearInterval(typer);
+        prompt.style.visibility = 'visible';
+      }
+    }, 120); // type line-by-line fast
+    // early proceed on key/tap after text appears
+    const proceed = ()=>{
+      if (!active) return;
+      active = false;
+      clearInterval(typer);
+      overlay.style.display = 'none';
+      window.removeEventListener('keydown', proceedOnce);
+      window.removeEventListener('touchstart', proceedOnce);
+      next && next();
+    };
+    const proceedOnce = ()=> proceed();
+    window.addEventListener('keydown', proceedOnce, { once:true });
+    window.addEventListener('touchstart', proceedOnce, { once:true });
+  }
+
+  function maybeStart(next){
+    gameState = 'intro';
+    show(next);
+  }
+
+  return { maybeStart };
+})();
 
 // UI bits (hearts + scrap counter)
 const heartsUI = (()=>{
@@ -234,17 +320,6 @@ const heartsUI = (()=>{
   function drawOverlay(){ if (flash>0){ ctx.save(); ctx.globalAlpha=flash; ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.restore(); flash=Math.max(0,flash-0.06); } const dt=1/60; for(let i=fx.length-1;i>=0;i--){ const p=fx[i]; p.x+=p.dx*dt; p.y+=p.dy*dt; p.life-=dt; if (p.life<=0){ fx.splice(i,1); continue; } const a=p.life/p.maxLife; const sx=p.x - camera.x + canvas.width/2; const sy=p.y - camera.y + canvas.height/2; ctx.save(); ctx.globalAlpha=a; ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(sx,sy,p.size,0,Math.PI*2); ctx.fill(); ctx.restore(); } }
   function reset(){ hearts=MAX_HEARTS; invUntil=0; flash=0; fx.length=0; render(); updateScrap(); }
   return { hitOrGameOver, drawOverlay, reset, updateScrap };
-})();
-
-// Lore intro (Star Wars crawl)
-const lore = (()=>{
-  let hasPlayed=false; let timer=null; let overlay, container, content, skip;
-  function ensure(){ if (overlay) return; overlay=document.createElement('div'); overlay.id='loreOverlay'; Object.assign(overlay.style,{position:'absolute',inset:0,background:'#000',color:'#feda4a',zIndex:999,display:'none',overflow:'hidden'}); container=document.createElement('div'); Object.assign(container.style,{position:'absolute',top:'50%',left:'50%',width:'80%',maxWidth:'600px',height:'100%',transform:'translate(-50%,-50%)',perspective:'300px'}); content=document.createElement('div'); Object.assign(content.style,{position:'absolute',top:'100%',width:'100%',transformOrigin:'50% 100%',transform:'rotateX(25deg) translateZ(0)',animation:'scrollLore 18s linear 1s forwards',textAlign:'justify',fontSize:'1.5rem',fontWeight:700}); content.innerHTML = `<p style="text-align:center;font-size:1.5em;margin-bottom:2em;">17th May 2005<br>Iraq</p><p>Extraction of U.S. Troops From Iraq.</p><p>Mission: Destroy all targets.</p><p>Reason: An Iraqi MiG-21 has shot down a UH-60 Carrying Troops to an extraction base, killing all involved.</p><p>Reach far enough into enemy lines to destroy their Cargo Plane carrying Ammunition.</p><p>Be safe, and good luck.</p>`; const style=document.createElement('style'); style.textContent=`@keyframes scrollLore{from{top:100%}to{top:-150%}}`; document.head.appendChild(style); skip=document.createElement('div'); Object.assign(skip.style,{position:'absolute',bottom:'20px',left:'50%',transform:'translateX(-50%)',fontSize:'1rem',opacity:.7,animation:'pulse 2s infinite'}); skip.textContent='Press any key to skip...'; container.appendChild(content); overlay.appendChild(container); overlay.appendChild(skip); document.body.appendChild(overlay); }
-  function play(next){ ensure(); overlay.style.display='block'; const end=()=>{ clearTimeout(timer); window.removeEventListener('keydown', onSkip, {once:true}); window.removeEventListener('touchstart', onSkip, {once:true}); overlay.style.display='none'; next&&next(); };
-    function onSkip(e){ e.preventDefault(); end(); }
-    window.addEventListener('keydown', onSkip, {once:true}); window.addEventListener('touchstart', onSkip, {once:true}); timer=setTimeout(end, 19000); }
-  function maybeStart(next){ if (hasPlayed) { next&&next(); return; } hasPlayed=true; gameState='lore'; play(next); }
-  return { maybeStart };
 })();
 
 // Overheat/cooldown bar
@@ -295,10 +370,18 @@ function resetGame(){
 }
 
 function showGameOver(){
-  gameState='gameOver'; scoreDisplay.style.display='none'; messageOverlay.style.display='none'; finalScoreDisplay.textContent = score; if (score>highScore){ highScore=score; localStorage.setItem('jet_dogfight_high', highScore); } bestScoreDisplay.textContent = highScore; bankSessionScrap(); updateShopUI(); gameOverModal.style.display='block'; gameOverModal.querySelector('h1').textContent='Game Over'; restartButton.textContent='Retry'; }
+  gameState='gameOver'; scoreDisplay.style.display='none'; messageOverlay.style.display='none';
+  finalScoreDisplay.textContent = score; if (score>highScore){ highScore=score; localStorage.setItem('jet_dogfight_high', highScore); }
+  bestScoreDisplay.textContent = highScore; bankSessionScrap(); updateShopUI();
+  gameOverModal.style.display='block'; gameOverModal.querySelector('h1').textContent='Game Over'; restartButton.textContent='Retry';
+}
 
 function showAntiCheat(){
-  gameState='gameOver'; scoreDisplay.style.display='none'; messageOverlay.style.display='none'; finalScoreDisplay.textContent = score; if (score>highScore){ highScore=score; localStorage.setItem('jet_dogfight_high', highScore); } bestScoreDisplay.textContent = highScore; bankSessionScrap(); updateShopUI(); gameOverModal.style.display='block'; gameOverModal.querySelector('h1').textContent='Anti Cheat Is: Active'; restartButton.textContent='Restart Game'; }
+  gameState='gameOver'; scoreDisplay.style.display='none'; messageOverlay.style.display='none';
+  finalScoreDisplay.textContent = score; if (score>highScore){ highScore=score; localStorage.setItem('jet_dogfight_high', highScore); }
+  bestScoreDisplay.textContent = highScore; bankSessionScrap(); updateShopUI();
+  gameOverModal.style.display='block'; gameOverModal.querySelector('h1').textContent='Anti Cheat Is: Active'; restartButton.textContent='Restart Game';
+}
 
 function spawnEnemy(){ if (enemies.length>=MAX_ENEMIES || bossState.active) return; const a=Math.random()*Math.PI*2; const d=Math.max(canvas.width,canvas.height)*0.8; const x=player.x+Math.cos(a)*d, y=player.y+Math.sin(a)*d; const ang=Math.atan2(player.y-y,player.x-x); enemies.push(jet(x,y,ang, ENEMY.speed, ENEMY.turn, 'enemy', '#EF4444')); }
 
@@ -384,7 +467,6 @@ function getPlayerSpriteImage(){
 function drawJetEntity(ent){
   ctx.save();
   ctx.translate(ent.x, ent.y);
-  // Starfighter uses base sprite rotated; others may not
   const rotation = ent.rotationOffset || 0;
   ctx.rotate(ent.angle + rotation);
   let img;
@@ -478,7 +560,6 @@ function updateShopUI(){
   // Jets
   jetWrap.innerHTML='';
   const owned=ownedJets(); const selected=getSelectedJet();
-  // Order for display
   const order = ['tigershark','starfighter','f16','f22'];
   for (const k of order){
     const j=jets[k]; if (!j) continue;
@@ -495,7 +576,9 @@ function updateShopUI(){
 restartButton.addEventListener('click', ()=>{ resetGame(); });
 addEventListener('resize', resizeCanvas);
 addEventListener('keydown', e=>{
-  if (gameState==='menu'){ lore.maybeStart(resetGame); return; }
+  if (gameState==='menu'){ terminal.maybeStart(resetGame); return; }
+  if (gameState==='intro'){ /* swallow keys until terminal handler moves on */ return; }
+
   if (e.key==='p' || e.key==='P'){
     if (gameState==='playing'){ gameState='paused'; messageOverlay.textContent='PAUSED · Press P to Resume'; messageOverlay.style.display='block'; }
     else if (gameState==='paused'){ gameState='playing'; messageOverlay.style.display='none'; }
@@ -503,15 +586,16 @@ addEventListener('keydown', e=>{
   if (e.key==='ArrowLeft') input.left=true;
   if (e.key==='ArrowRight') input.right=true;
   if (e.code==='Space') input.fire=true;
+
   // Dev keys
   if ((e.key==='b'||e.key==='B') && gameState==='playing'){ score += 5000; scoreDisplay.textContent=score; }
   if ((e.key==='e'||e.key==='E') && gameState==='playing'){ createExplosion(player.x,player.y,28); showGameOver(); }
 });
 addEventListener('keyup', e=>{ if (e.key==='ArrowLeft') input.left=false; if (e.key==='ArrowRight') input.right=false; if (e.code==='Space') input.fire=false; });
 
-touchLeft.addEventListener('touchstart', e=>{ e.preventDefault(); input.left=true; if (gameState==='menu') lore.maybeStart(resetGame); }, {passive:false});
+touchLeft.addEventListener('touchstart', e=>{ e.preventDefault(); input.left=true; if (gameState==='menu') terminal.maybeStart(resetGame); }, {passive:false});
 touchLeft.addEventListener('touchend',   e=>{ e.preventDefault(); input.left=false; }, {passive:false});
-touchRight.addEventListener('touchstart', e=>{ e.preventDefault(); input.right=true; if (gameState==='menu') lore.maybeStart(resetGame); }, {passive:false});
+touchRight.addEventListener('touchstart', e=>{ e.preventDefault(); input.right=true; if (gameState==='menu') terminal.maybeStart(resetGame); }, {passive:false});
 touchRight.addEventListener('touchend',   e=>{ e.preventDefault(); input.right=false; }, {passive:false});
 
 function gameLoop(t){ const dt=(t-lastTime)/1000; lastTime=t; if (gameState==='playing') update(dt); draw(); requestAnimationFrame(gameLoop); }
@@ -521,45 +605,5 @@ resizeCanvas(); lastTime=performance.now(); requestAnimationFrame(gameLoop);
 scoreDisplay.textContent=score; bestScoreDisplay.textContent=highScore; messageOverlay.style.display='block';
 updateShopUI();
 </script>
- // ===== Secret Scrap Sequence =====
-let secretInput = [];
-const secretSequence = ['ArrowUp','ArrowDown','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','a','b','s'];
-let secretUses = 0;
-
-addEventListener('keydown', e => {
-  if (gameState !== 'gameOver') return; // only works on end screen
-  secretInput.push(e.key);
-  if (secretInput.length > secretSequence.length) secretInput.shift();
-
-  if (secretInput.join(',') === secretSequence.join(',') && secretUses < 3) {
-    secretUses++;
-    totalScrap += 1000;
-    localStorage.setItem('jet_dogfight_scrap', totalScrap);
-    heartsUI.updateScrap();
-
-    console.log(`Secret sequence activated! (${secretUses}/3)`);
-
-    // visual confirmation
-    const msg = document.createElement('div');
-    msg.textContent = '+1000 Scrap Added!';
-    Object.assign(msg.style, {
-      position: 'absolute',
-      top: '60%',
-      left: '50%',
-      transform: 'translate(-50%,-50%)',
-      color: '#facc15',
-      fontSize: '1.6rem',
-      fontWeight: '900',
-      textShadow: '0 0 8px #000',
-      zIndex: 2001,
-      opacity: 1,
-      transition: 'opacity 1.2s ease'
-    });
-    document.body.appendChild(msg);
-    setTimeout(()=> msg.style.opacity = 0, 300);
-    setTimeout(()=> msg.remove(), 1500);
-  }
-});
-
 </body>
 </html>
