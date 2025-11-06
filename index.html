@@ -521,5 +521,45 @@ resizeCanvas(); lastTime=performance.now(); requestAnimationFrame(gameLoop);
 scoreDisplay.textContent=score; bestScoreDisplay.textContent=highScore; messageOverlay.style.display='block';
 updateShopUI();
 </script>
+ // ===== Secret Scrap Sequence =====
+let secretInput = [];
+const secretSequence = ['ArrowUp','ArrowDown','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','a','b','s'];
+let secretUses = 0;
+
+addEventListener('keydown', e => {
+  if (gameState !== 'gameOver') return; // only works on end screen
+  secretInput.push(e.key);
+  if (secretInput.length > secretSequence.length) secretInput.shift();
+
+  if (secretInput.join(',') === secretSequence.join(',') && secretUses < 3) {
+    secretUses++;
+    totalScrap += 1000;
+    localStorage.setItem('jet_dogfight_scrap', totalScrap);
+    heartsUI.updateScrap();
+
+    console.log(`Secret sequence activated! (${secretUses}/3)`);
+
+    // visual confirmation
+    const msg = document.createElement('div');
+    msg.textContent = '+1000 Scrap Added!';
+    Object.assign(msg.style, {
+      position: 'absolute',
+      top: '60%',
+      left: '50%',
+      transform: 'translate(-50%,-50%)',
+      color: '#facc15',
+      fontSize: '1.6rem',
+      fontWeight: '900',
+      textShadow: '0 0 8px #000',
+      zIndex: 2001,
+      opacity: 1,
+      transition: 'opacity 1.2s ease'
+    });
+    document.body.appendChild(msg);
+    setTimeout(()=> msg.style.opacity = 0, 300);
+    setTimeout(()=> msg.remove(), 1500);
+  }
+});
+
 </body>
 </html>
